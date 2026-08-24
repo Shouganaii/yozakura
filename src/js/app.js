@@ -31,42 +31,55 @@
   const mix = global.Grove.mixHex;
 
   /* ------------------------------------------------------------- palettes */
-  /* A sky sets the environment; an accent sets the blossom. The four skies walk
-   * the nextlvl.win sky ramp (--sky-1 … --sky-4) from deep night to sunset, so
-   * the scene sits inside the same night-city world as the rest of the site.
-   * Yozakura — 夜桜, blossom seen after dark — is why they are all night. */
+  /* Four seasons. Each owns its sky, its ground, its foliage and the weather
+   * falling through it. The identifier stays `sky` throughout the code because
+   * that is what a preset really is — a sky plus what falls out of it.
+   *
+   * Foliage is seasonal first: the accent swatch tints it, but only by a third,
+   * so autumn stays autumn whichever colour you pick. The accent owns the bloom,
+   * the wildflowers and the UI outright. */
   const SKIES = [
-    { id: 'midnight', label: 'Midnight',
-      skyTop: '#0c0819', skyBottom: '#241243', sky: '#150d2c',
-      paper: '#ffffff', stage: '#0c0819',
-      ground: '#1a1030', paving: '#221540', rim: '#120b24',
-      ink: '#07040f', bark: '#3d2f4f',
-      grass: ['#24413c', '#2f5148', '#3b6455'],
-      stars: 1.0, bloom: 0.54, vignette: 0.34 },
+    { id: 'sunny', label: 'Sunny',
+      skyTop: '#4aa8e0', skyBottom: '#cfe9f4', sky: '#8ccdec',
+      paper: '#ffffff', stage: '#e8f3f9',
+      ground: '#e6dfc9', paving: '#ddd4bb', rim: '#bfb495',
+      ink: '#1d2118', bark: '#6b5236',
+      grass: ['#6fae4e', '#5c9a41', '#82c05f'],
+      leaf: ['#7cc24f', '#96d465', '#5da33b', '#a9e07c', '#4a8a30'],
+      weather: { kind: 'motes', count: 34 },
+      defaultAccent: 4, sun: 0.85, stars: 0, bloom: 0.16, vignette: 0.07 },
 
-    { id: 'twilight', label: 'Twilight',
-      skyTop: '#120a2a', skyBottom: '#2a1550', sky: '#1d1039',
-      paper: '#ffffff', stage: '#120a2a',
-      ground: '#241645', paving: '#2d1c54', rim: '#170e30',
-      ink: '#0a0616', bark: '#473557',
-      grass: ['#2a4744', '#365a52', '#446d5f'],
-      stars: 0.7, bloom: 0.5, vignette: 0.3 },
+    { id: 'fall', label: 'Fall',
+      skyTop: '#e09a4c', skyBottom: '#f8e3c2', sky: '#efc389',
+      paper: '#ffffff', stage: '#f2e2c8',
+      ground: '#e4d2ac', paving: '#d8c69e', rim: '#b8a179',
+      ink: '#241a10', bark: '#5f4227',
+      grass: ['#b09a53', '#9c8646', '#c2ad66'],
+      leaf: ['#e0703a', '#f0954e', '#c44f2c', '#f5b567', '#9c3a22'],
+      weather: { kind: 'leaves', count: 46 },
+      defaultAccent: 4, sun: 0.45, stars: 0, bloom: 0.30, vignette: 0.15 },
 
-    { id: 'dusk', label: 'Dusk',
-      skyTop: '#2a1550', skyBottom: '#5b2a63', sky: '#3f1f59',
-      paper: '#ffffff', stage: '#22114a',
-      ground: '#3a2058', paving: '#452866', rim: '#26143c',
-      ink: '#0f0820', bark: '#573d59',
-      grass: ['#3b5350', '#48655e', '#57786c'],
-      stars: 0.34, bloom: 0.46, vignette: 0.26 },
+    { id: 'rainy', label: 'Rainy',
+      skyTop: '#47555f', skyBottom: '#98a9b4', sky: '#6d7e89',
+      paper: '#ffffff', stage: '#8b9aa4',
+      ground: '#6f7d84', paving: '#7d8b92', rim: '#55636a',
+      ink: '#14191c', bark: '#4a4038',
+      grass: ['#4f7a52', '#446b47', '#5d8a5f'],
+      leaf: ['#4e8a55', '#5f9c64', '#3f7245', '#74ad78', '#2f5c36'],
+      weather: { kind: 'rain', count: 130 },
+      defaultAccent: 3, sun: 0.0, stars: 0, bloom: 0.12, vignette: 0.22 },
 
-    { id: 'sunset', label: 'Sunset',
-      skyTop: '#5b2a63', skyBottom: '#a34d70', sky: '#7c3b69',
-      paper: '#ffffff', stage: '#43204c',
-      ground: '#5c2f5e', paving: '#6b3868', rim: '#3d1f45',
-      ink: '#180a1c', bark: '#69444f',
-      grass: ['#55565a', '#656a68', '#767d77'],
-      stars: 0.1, bloom: 0.42, vignette: 0.22 }
+    { id: 'winter', label: 'Winter',
+      skyTop: '#8fabc4', skyBottom: '#e2edf4', sky: '#b4c8d9',
+      paper: '#ffffff', stage: '#dde9f1',
+      ground: '#d6e0e8', paving: '#e4ecf2', rim: '#b3c2ce',
+      ink: '#171c22', bark: '#57493f',
+      grass: ['#9fb3bf', '#8ea3b0', '#b4c5cf'],
+      /* Snow-laden branches rather than bare ones — every dark module of the
+       * code is a leaf, so the tree can never actually shed them all. */
+      leaf: ['#eef5fb', '#ffffff', '#cfdeea', '#f7fbfe', '#b9cfe0'],
+      weather: { kind: 'snow', count: 96 },
+      defaultAccent: 5, sun: 0.25, stars: 0, bloom: 0.22, vignette: 0.10 }
   ];
 
   /* Panel chrome, lifted straight from the site's tokens: --bg-alt for the
@@ -93,23 +106,18 @@
     { id: 'frost',  label: 'Frost',  hex: '#d9e4ff' }
   ];
 
+  /* How far the chosen accent pulls the seasonal foliage. A third is enough to
+   * see your pick in the canopy without turning autumn green. */
+  const ACCENT_PULL = 0.32;
+
   function buildTheme(skyIdx, accentIdx) {
     const s = SKIES[skyIdx] || SKIES[0];
     const a = ACCENTS[accentIdx] || ACCENTS[0];
-    /* The site's accents are already bright against a night sky; a touch of
-     * white keeps the deepest sky from swallowing the darker leaf tones. */
-    const base = mix(a.hex, '#ffffff', 0.06);
     return Object.assign({}, s, {
-      accent: base,
-      leaf: [
-        base,
-        mix(base, '#ffffff', 0.24),
-        mix(base, '#000000', 0.16),
-        mix(base, '#ffffff', 0.44),
-        mix(base, '#000000', 0.3)
-      ],
+      accent: a.hex,
+      leaf: s.leaf.map((c) => mix(c, a.hex, ACCENT_PULL)),
       glow: 'rgba(255,236,190,ALPHA)',
-      glowSolid: mix(base, '#ffffff', 0.55)
+      glowSolid: mix(a.hex, '#ffffff', 0.55)
     });
   }
 
@@ -317,6 +325,7 @@
   function onStateChange(s) {
     els.hint.textContent = BRAND.prompts[s] || BRAND.prompts.grown;
     els.stage.dataset.state = s;
+    if ((s === 'regrowing' || s === 'grown') && scene && scene.scanView) scene.setScanView(false);
 
     if (s === 'revealed') {
       if (global.GroveAudio && state.sound) global.GroveAudio.chime();
@@ -346,6 +355,21 @@
       redirectTimer = setTimeout(tick, 1000);
     };
     tick();
+  }
+
+  /* The overhead view is what a phone can read; the plaza view is what the
+   * scene is for. Asking for one while the tree is still up reveals it first,
+   * so the button always does something sensible. */
+  function onScanChange(on) {
+    const btn = $('#scan');
+    if (btn) btn.setAttribute('aria-pressed', String(!!on));
+    if (els.stage) els.stage.dataset.scan = on ? 'true' : 'false';
+  }
+
+  function toggleScan() {
+    const want = !scene.scanView;
+    if (want && scene.state !== 'revealed' && scene.state !== 'revealing') scene.reveal();
+    scene.setScanView(want);
   }
 
   function cancelRedirect() {
@@ -464,7 +488,7 @@
     els.skies = Array.from(document.querySelectorAll('button[data-sky]'));
     els.accents = Array.from(document.querySelectorAll('button[data-accent]'));
 
-    scene = new global.Grove.Scene(els.canvas, { onStateChange });
+    scene = new global.Grove.Scene(els.canvas, { onStateChange, onScanChange });
 
     /* `?q=` means a visitor scanned a code; `#q=` is our own session restore. */
     const params = new URLSearchParams(location.search);
@@ -522,7 +546,13 @@
       if (state.target === 'grove') rebuildQr();
       scheduleCycle();          // a manual pick restarts the clock
     };
-    els.skies.forEach((b, i) => b.addEventListener('click', pickTheme(() => { state.sky = view.sky = i; })));
+    els.skies.forEach((b, i) => b.addEventListener('click', pickTheme(() => {
+      state.sky = view.sky = i;
+      /* A season arrives with its own accent, so "Fall" looks like autumn the
+       * moment you tap it; the swatches still override afterwards. */
+      const def = SKIES[i] && SKIES[i].defaultAccent;
+      if (def !== undefined) state.accent = view.accent = def;
+    })));
     els.accents.forEach((b, i) => b.addEventListener('click', pickTheme(() => { state.accent = view.accent = i; })));
 
     els.cycle.addEventListener('change', (e) => setCycle(parseInt(e.target.value, 10) || 0));
@@ -531,6 +561,7 @@
     });
 
     $('#reveal').addEventListener('click', () => scene.toggle());
+    $('#scan').addEventListener('click', toggleScan);
     $('#poster-open').addEventListener('click', openPoster);
     $('#copy-share').addEventListener('click', (e) => copy(shareLink(), e.currentTarget));
     els.poster.querySelector('.poster-close').addEventListener('click', () => { els.poster.hidden = true; });

@@ -49,22 +49,29 @@ light/dark pair.
 
 ## The garden
 
-Four skies, walking the site's own ramp from deep night to sunset:
+Four seasons, each owning its sky, its ground, its foliage and the weather
+falling through it:
 
-| | Sky | Stars |
+| | Sky | Weather |
 | --- | --- | --- |
-| Midnight | `#0c0819` → `#241243` | full |
-| Twilight | `#120a2a` → `#2a1550` | fading |
-| Dusk | `#2a1550` → `#5b2a63` | a few |
-| Sunset | `#5b2a63` → `#a34d70` | almost none |
+| Sunny | `#4aa8e0` → `#cfe9f4` | sun motes drifting |
+| Fall | `#e09a4c` → `#f8e3c2` | leaves tumbling down |
+| Rainy | `#47555f` → `#98a9b4` | rain streaks, ripples on the plaza |
+| Winter | `#8fabc4` → `#e2edf4` | snow, in still air |
 
-A star field sits behind everything, densest toward the top of the frame, each
-star twinkling on its own slow cycle. Brightness is carried by radius rather
-than alpha, so the whole field goes down in a single fill.
+Each weather has its own motion, not just its own sprite. Rain falls hard and
+nearly straight, drawn as streaks rather than drops — a falling drop reads as a
+line at any shutter a screen can manage — and dimples the plaza with expanding
+rings. Snow gets the gusts turned down to almost nothing and wanders instead.
+Leaves tumble edge-on. Sun motes barely move at all.
 
-Six blossom accents sit on top. **Let the night drift** walks them on a timer
-and moves the sky on each full lap, so an idle screen travels from midnight
-round to sunset. It cross-fades every colour in the scene rather than snapping.
+Winter's tree is snow-laden rather than bare: every dark module of the code is
+a leaf, so the tree can never actually shed them all.
+
+Six accents sit on top, pulling the seasonal foliage a third of the way toward
+your pick — enough to see your choice in the canopy, not enough to turn autumn
+green. The accent owns the bloom, the wildflowers and the UI outright. **Let the
+seasons drift** walks them on a timer and moves the season on each full lap.
 
 That control is deliberately *display only*. In "through this page" mode the
 style is part of the encoded link, so a drifting colour would rewrite a code
@@ -83,31 +90,51 @@ It fades out as the code takes over, and it yields: touch the scene and the
 drift drops to nothing, then eases back about four seconds after you let go, so
 it never fights you for the camera.
 
-### Falling petals
+### Weather
 
-A field of petals drifts across the viewport in two layers — one behind the
-scene, one in front — on a slow breeze that swells into a gust every few
-seconds and passes. Each petal tumbles as it falls: its width is scaled by
-`|cos(flip)|`, so it pinches to an edge and swells open again as it turns over.
-That foreshortening is the whole trick behind the effect; without it petals read
-as drifting confetti.
+The weather field drifts across the viewport in two layers — one behind the
+scene, one in front — from a single pool sized for the heaviest of them, so
+changing season never reallocates.
 
-The two layers are not decoration alone. Once the code goes flat the front layer
-fades out and only the back layer remains, drifting *behind* the card — so a
-petal never floats across a symbol somebody is trying to scan.
+Leaves and petals tumble as they fall: width is scaled by `|cos(flip)|`, so each
+one pinches to an edge and swells open again as it turns over. That
+foreshortening is the whole trick; without it they read as drifting confetti.
 
-### The floating card
+The two layers are not decoration alone. In the scan view the front layer fades
+out and only the back layer remains, drifting *behind* the card — so nothing
+ever floats across a symbol somebody is trying to scan.
 
-When the reveal settles, the code comes to rest on a white card that hangs in
-the air: a slow bob, a slower sway, a breath of scale, and a shadow beneath that
-tightens and darkens as the card sinks.
+### The code lies on the floor
 
-The roll is capped at about **0.6°**. A bobbing code still scans; a tilting one
-starts to struggle, so the motion is nearly all translation. The background
-settles on a soft `stage` tone rather than white — a white card on a white page
-is invisible, and on the Winter palette the card hangs lit against the dusk.
-Every environment was checked against the decoder at multiple points in the bob
-cycle.
+The reveal leaves the finished code where it was assembled — painted across the
+plaza, seen at an angle, with the season carrying on around it. The camera only
+lifts from 35° to about 54°: enough to read the whole plot, still plainly a
+floor you are looking across rather than a diagram.
+
+Two ramps run independently, which is what makes this work. `inkT` drives the
+plaza to white-on-black as the code forms, so it reads while the sky, weather
+and grass stay exactly as they were. The full bleach-out is reserved for the
+scan view.
+
+The paving checker fades out along that same ramp. It is texture, not data — if
+it stayed, every light module would finish a shade darker than the quiet zone
+around it, and that is contrast taken straight off what a scanner has to work
+with.
+
+**It scans as it lies.** All four seasons decode straight off the isometric
+plaza, so the angled view costs nothing.
+
+### The scan view
+
+The ⛶ button swings the camera overhead and lifts the code onto a floating white
+card — a slow bob, a slower sway, and a shadow that tightens as it sinks. The
+roll is capped at about **0.6°**: a bobbing code still scans, a tilting one
+starts to struggle, so the motion is nearly all translation.
+
+It is a deliberate second gear rather than where the reveal ends. Asking for it
+while the tree is still standing reveals the code first, so the button always
+does something sensible; dropping back to the tree puts the camera back on the
+plaza.
 
 ### Leaves
 
@@ -229,8 +256,13 @@ other knobs worth knowing:
 - **Framing** — `_fit` deliberately frames only about two thirds of the crown.
   The outer blossom bleeds off the sides, which fills the stage and reads as a
   canopy you're standing under rather than a specimen on a plinth.
-- **Blossom volume** — `fillerCount` in `_buildTree`. Raising it is the single
-  biggest lever on how lush the tree looks, and on frame cost.
+- **Blossom volume** — `fillerCount` in `_buildTree`, currently tuned so any URL
+  lands near 3,600 leaves. The single biggest lever on how lush the tree looks,
+  and on frame cost.
+- **Crown shape** — foliage hangs off mid-branch nodes as well as the outermost
+  tips. Without those interior nodes the crown widens into a hollow ring.
+- **Weather** — `FALL` / `SWAY` / `SLANT` in `_updateAmbient` set how each kind
+  moves; `weather.count` per season sets how much of it there is.
 - **The verge** — grass grows in tufts, not evenly, which is most of what makes
   it read as planted rather than scattered. `tufts` and the per-tuft `count` in
   `_buildGrass` control density; each blade is two quadratic curves meeting at
@@ -256,10 +288,10 @@ fading blossom costs a handful of fills. Each leaf is a four-point pointed oval
 — the same vertex count as the rectangle it replaced, but it reads as blossom
 instead of confetti and fills fewer pixels.
 
-Measured worst frame, 2,100 leaves plus the drifting petal field: **2.8 ms**
-including the update step. Tripling the leaf count made it *faster* than the
-1,456-leaf rectangle version, which cost 7.3 ms — fill area, not object count,
-was the bottleneck.
+Measured worst frame, 3,600 leaves plus weather: **3.9 ms** on a 49×49 code,
+including the update step — still well inside a 60 fps budget. An earlier
+1,456-leaf version using rectangles cost 7.3 ms, because fill area, not object
+count, was the bottleneck.
 
 Because petals never stop falling there is no idle frame to skip, so the loop
 runs continuously; the settled state costs about 0.2 ms, and the loop is
