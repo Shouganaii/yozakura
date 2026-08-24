@@ -108,7 +108,7 @@
 
   /* How far the chosen accent pulls the seasonal foliage. A third is enough to
    * see your pick in the canopy without turning autumn green. */
-  const ACCENT_PULL = 0.32;
+  const ACCENT_PULL = 0.24;
 
   function buildTheme(skyIdx, accentIdx) {
     const s = SKIES[skyIdx] || SKIES[0];
@@ -517,6 +517,13 @@
     let savedCycle = 0;
     try { savedCycle = parseInt(localStorage.getItem('grove.cycle') || '0', 10) || 0; } catch (e) { savedCycle = 0; }
 
+    /* Without a shared link to honour, start on the season's own accent —
+     * otherwise the default swatch drags the seasonal foliage off-hue and a
+     * summer tree comes up olive. */
+    if (!cfg) {
+      const def = SKIES[state.sky] && SKIES[state.sky].defaultAccent;
+      if (def !== undefined) state.accent = def;
+    }
     view.sky = state.sky;
     view.accent = state.accent;
     applyTheme(false);

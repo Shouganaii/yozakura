@@ -1530,15 +1530,15 @@ select {
         const slant = this.ambientWind * 0.22;
         g.strokeStyle = mixHex(this.theme.skyBottom, '#ffffff', 0.55);
         g.lineCap = 'round';
-        g.globalAlpha = alpha * 0.75;
+        g.globalAlpha = alpha * 0.42;
         for (let pass = 0; pass < 2; pass++) {
-          g.lineWidth = pass === 0 ? 0.9 : 1.6;
+          g.lineWidth = pass === 0 ? 0.7 : 1.1;
           g.beginPath();
           let any = false;
           for (let i = 0; i < count; i++) {
             const q = list[i];
             if ((q.depth > 0.5) !== (pass === 1)) continue;
-            const len = lerp(9, 26, q.depth);
+            const len = lerp(14, 40, q.depth);
             const x = q.x * w, y = q.y * h;
             g.moveTo(x - slant * len, y - len);
             g.lineTo(x, y);
@@ -1628,6 +1628,15 @@ select {
       this.qr = qr;
       this.n = qr.size;
       this.heights = new Float32Array(this.n * this.n);
+      /* Every dark module, landed or not. The plaza is paved with the code from
+       * the first frame — you can just make it out in the stonework long before
+       * anything falls, which is the whole conceit. */
+      this._allDark = new Uint8Array(this.n * this.n);
+      for (let y = 0; y < this.n; y++) {
+        for (let x = 0; x < this.n; x++) {
+          if (qr.get(x, y)) this._allDark[y * this.n + x] = 1;
+        }
+      }
       this._buildTree();
       this._buildGrass();
       this._recolour();
@@ -1728,18 +1737,35 @@ select {
       this.branches = branches;
       this.trunkTop = trunkH;
 
-      /* Distribute leaves over the tips, then pair each with a module.
-       * Sorting both lists by angle keeps a leaf's flight path short and stops
-       * the swarm from criss-crossing itself. */
+      /* Foliage sites run the length of every branch, not just its end. Leaves
+       * hugging the limbs is what makes a canopy look grown rather than
+       * stuck on, and it fills the volume the widen step opens up. */
+      const sites = [];
+      for (const br of branches) {
+        if (br.depth < 1) continue;
+        const segLen = Math.hypot(br.x2 - br.x1, br.y2 - br.y1, br.z2 - br.z1);
+        const count = Math.max(2, Math.round(segLen * 2.4));
+        for (let i = 0; i < count; i++) {
+          const t = 0.12 + rand() * 0.88;
+          sites.push({
+            x: lerp(br.x1, br.x2, t),
+            y: lerp(br.y1, br.y2, t),
+            z: lerp(br.z1, br.z2, t),
+            spread: segLen * (0.30 + 0.16 * br.depth)
+          });
+        }
+      }
+      const siteAt = (i) => sites[i % sites.length];
+
       const canopy = [];
       for (let i = 0; i < targets.length; i++) {
-        const tip = tips[i % tips.length];
+        const site = siteAt(i * 3 + 1);
         const a = rand() * TAU, b = Math.acos(2 * rand() - 1);
-        const r = tip.spread * Math.pow(rand(), 0.4);
+        const r = site.spread * Math.pow(rand(), 0.45);
         canopy.push({
-          x: tip.x + r * Math.sin(b) * Math.cos(a),
-          y: tip.y + r * Math.sin(b) * Math.sin(a),
-          z: tip.z + r * Math.cos(b) * 0.8
+          x: site.x + r * Math.sin(b) * Math.cos(a),
+          y: site.y + r * Math.sin(b) * Math.sin(a),
+          z: site.z + r * Math.cos(b) * 0.75
         });
       }
 
@@ -1751,14 +1777,14 @@ select {
       const fillerCount = Math.round(clamp(3600 - targets.length, 1200, 3100));
       this.petals = [];
       for (let i = 0; i < fillerCount; i++) {
-        const tip = tips[(i * 7 + 3) % tips.length];
+        const site = siteAt(i * 7 + 3);
         const a = rand() * TAU, b = Math.acos(2 * rand() - 1);
-        const r = tip.spread * Math.pow(rand(), 0.34);
-        const px = tip.x + r * Math.sin(b) * Math.cos(a);
-        const py = tip.y + r * Math.sin(b) * Math.sin(a);
+        const r = site.spread * Math.pow(rand(), 0.4);
+        const px = site.x + r * Math.sin(b) * Math.cos(a);
+        const py = site.y + r * Math.sin(b) * Math.sin(a);
         const away = Math.atan2(py - cy, px - cx) + (rand() - 0.5) * 1.1;
         this.petals.push({
-          hx: px, hy: py, hz: Math.max(tip.z + r * Math.cos(b) * 0.8, n * 0.1),
+          hx: px, hy: py, hz: Math.max(site.z + r * Math.cos(b) * 0.75, n * 0.1),
           driftX: Math.cos(away) * n * (0.5 + rand() * 0.9),
           driftY: Math.sin(away) * n * (0.5 + rand() * 0.9),
           driftZ: n * (0.12 + rand() * 0.5),
@@ -1844,6 +1870,17 @@ select {
       }
       this.grass = blades;
 
+      /* Leaves that came down a while ago and are just lying there. They sell
+       * the plaza as somewhere weather actually happens — and they clear as the
+       * code takes over, so nothing is resting on it when you go to scan. */
+      this.fallen = Array.from({ length: 70 }, () => ({
+        x: -1 + rand() * (n + 2),
+        y: -1 + rand() * (n + 2),
+        rot: rand() * TAU,
+        size: 0.30 + rand() * 0.26,
+        tone: rand()
+      }));
+
       /* Petals that have already let go, drifting down on a loop. They are
        * what keeps the scene alive while nobody is touching it. */
       this.motes = Array.from({ length: 46 }, () => ({
@@ -1866,6 +1903,7 @@ select {
         pt.colourIdx = Math.floor(pt.tone * pal.length) % pal.length;
         pt.colour = pal[pt.colourIdx];
       }
+      for (const f of (this.fallen || [])) f.colour = pal[Math.floor(f.tone * pal.length) % pal.length];
       for (const g of this.grass) g.colour = this.theme.grass[Math.floor(g.tone * this.theme.grass.length) % this.theme.grass.length];
       for (const m of this.motes) m.colour = pal[Math.floor(m.tone * pal.length) % pal.length];
     }
@@ -2189,14 +2227,49 @@ select {
           mixHex(th.ground, '#ffffff', inkT));
       }
 
-      /* Plot rim, which fades away as the view flattens. */
-      if (flatten < 1) {
-        this._quad(g, P(0, n, 0), P(n, n, 0), P(n, n, -0.34), P(0, n, -0.34), shade(th.rim, -0.08), 1 - flatten);
-        this._quad(g, P(n, 0, 0), P(n, n, 0), P(n, n, -0.34), P(n, 0, -0.34), shade(th.rim, -0.2), 1 - flatten);
+      /* The whole plot is a slab, not a decal: the two faces the camera can see
+       * are drawn to their full depth so it sits in the world with weight. They
+       * only go away in the overhead view, where there are no sides to see. */
+      if (!onCard) {
+        const lo = -quiet, hi = n + quiet, d = -0.9;
+        const rimA = shade(th.rim, 0.12), rimB = shade(th.rim, -0.12);
+        this._quad(g, P(lo, hi, 0), P(hi, hi, 0), P(hi, hi, d), P(lo, hi, d), rimA, 1 - this.scanFlat);
+        this._quad(g, P(hi, lo, 0), P(hi, hi, 0), P(hi, hi, d), P(hi, lo, d), rimB, 1 - this.scanFlat);
       }
 
       /* ---- paving grid + risen modules ---- */
       this._drawGround(g, P, b, paving, ink, blockH, flatten, inkT);
+
+      /* Fallen leaves sit on the paving, fading out as the code sharpens. */
+      if (!onCard && inkT < 0.98 && this.fallen) {
+        const buckets = new Map();
+        for (const f of this.fallen) {
+          let arr = buckets.get(f.colour);
+          if (!arr) { arr = []; buckets.set(f.colour, arr); }
+          arr.push(f);
+        }
+        g.globalAlpha = (1 - inkT) * 0.85;
+        for (const [colour, arr] of buckets) {
+          g.fillStyle = colour;
+          g.beginPath();
+          for (const f of arr) {
+            const cs = Math.cos(f.rot), sn = Math.sin(f.rot);
+            const ax = f.size, ay = f.size * 0.5;
+            /* Corners in grid space, so the projection foreshortens them the
+             * way anything lying flat on the ground would be. */
+            const pts = [[-ax, 0], [0, -ay], [ax, 0], [0, ay]];
+            for (let k = 0; k < 4; k++) {
+              const px = f.x + pts[k][0] * cs - pts[k][1] * sn;
+              const py = f.y + pts[k][0] * sn + pts[k][1] * cs;
+              const q = P(px, py, 0.01);
+              if (k === 0) g.moveTo(q[0], q[1]); else g.lineTo(q[0], q[1]);
+            }
+            g.closePath();
+          }
+          g.fill();
+        }
+        g.globalAlpha = 1;
+      }
 
       if (!this.reducedMotion && !onCard) this._drawRipples(g, P, fit.zoom, 1 - lockT);
 
@@ -2466,6 +2539,29 @@ select {
           let any = false;
           for (let gx = (gy & 1) ? 0 : 1; gx < n; gx += 2) {
             if (darkArr[gy * n + gx]) continue;
+            const o = P(gx, gy, 0);
+            quad(o[0], o[1], o[0] + ex0, o[1] + ex1,
+                 o[0] + ex0 + ey0, o[1] + ex1 + ey1, o[0] + ey0, o[1] + ey1);
+            any = true;
+          }
+          if (any) g.fill();
+        }
+      }
+
+      /* --- the latent code, laid into the stonework ---------------------
+       * Every dark module, whether or not its leaf has landed yet, drawn just
+       * far enough from the paving to be legible if you look for it. Landed
+       * modules are painted over at full strength by the tops pass below, so
+       * this only ever shows through where the code has yet to arrive. */
+      const latent = this._allDark;
+      if (latent) {
+        g.fillStyle = mixHex(paving, ink, 0.13);
+        for (let gy = 0; gy < n; gy++) {
+          g.beginPath();
+          let any = false;
+          for (let gx = 0; gx < n; gx++) {
+            const i = gy * n + gx;
+            if (!latent[i] || darkArr[i]) continue;
             const o = P(gx, gy, 0);
             quad(o[0], o[1], o[0] + ex0, o[1] + ex1,
                  o[0] + ex0 + ey0, o[1] + ex1 + ey1, o[0] + ey0, o[1] + ey1);
@@ -2944,7 +3040,7 @@ select {
 
   /* How far the chosen accent pulls the seasonal foliage. A third is enough to
    * see your pick in the canopy without turning autumn green. */
-  const ACCENT_PULL = 0.32;
+  const ACCENT_PULL = 0.24;
 
   function buildTheme(skyIdx, accentIdx) {
     const s = SKIES[skyIdx] || SKIES[0];
@@ -3353,6 +3449,13 @@ select {
     let savedCycle = 0;
     try { savedCycle = parseInt(localStorage.getItem('grove.cycle') || '0', 10) || 0; } catch (e) { savedCycle = 0; }
 
+    /* Without a shared link to honour, start on the season's own accent —
+     * otherwise the default swatch drags the seasonal foliage off-hue and a
+     * summer tree comes up olive. */
+    if (!cfg) {
+      const def = SKIES[state.sky] && SKIES[state.sky].defaultAccent;
+      if (def !== undefined) state.accent = def;
+    }
     view.sky = state.sky;
     view.accent = state.accent;
     applyTheme(false);

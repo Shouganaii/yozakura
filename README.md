@@ -104,6 +104,21 @@ The two layers are not decoration alone. In the scan view the front layer fades
 out and only the back layer remains, drifting *behind* the card — so nothing
 ever floats across a symbol somebody is trying to scan.
 
+### The code is in the paving from the start
+
+The plaza is laid with the code before anything happens: every dark module is
+drawn into the stonework at about 13% of the way from paving to ink — legible if
+you look for it, easy to miss if you don't. Leaves landing don't *create* the
+pattern so much as finish it, painting each module up to full strength as they
+arrive.
+
+That is one extra row-batched pass over the modules that have yet to land;
+landed ones are painted over at full strength by the tops pass, so the finished
+code is unaffected.
+
+Leaves that came down earlier lie scattered on the stone, and clear away as the
+code sharpens — nothing is resting on it by the time you go to scan.
+
 ### The code lies on the floor
 
 The reveal leaves the finished code where it was assembled — painted across the
@@ -263,6 +278,11 @@ other knobs worth knowing:
   tips. Without those interior nodes the crown widens into a hollow ring.
 - **Weather** — `FALL` / `SWAY` / `SLANT` in `_updateAmbient` set how each kind
   moves; `weather.count` per season sets how much of it there is.
+- **Latent code** — the `0.13` in the latent pass of `_drawGround` is how plainly
+  the code shows through the paving before the reveal.
+- **Foliage placement** — `sites` in `_buildTree` samples points along the whole
+  length of every branch, not just its tip, which is what makes the canopy look
+  grown rather than stuck on.
 - **The verge** — grass grows in tufts, not evenly, which is most of what makes
   it read as planted rather than scattered. `tufts` and the per-tuft `count` in
   `_buildGrass` control density; each blade is two quadratic curves meeting at
