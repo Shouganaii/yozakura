@@ -7,9 +7,9 @@
  * Colours come from the active sky; app.js writes every token below.
  * ========================================================================== */
 
-/* Tokens are written by app.js from the active environment. The Winter dusk
-   palette inverts the whole chrome, so nothing below may hard-code a light
-   value — every declaration reads through a variable. */
+/* Tokens are written by app.js from the active sky. Every sky here is a night
+   sky, so the chrome is dark throughout — but nothing below may hard-code a
+   colour: every declaration reads through a variable. */
 :root {
   --sky: #241243;
   --sky-top: #0c0819;
@@ -325,7 +325,7 @@ select {
 .chip:hover { filter: brightness(1.08); color: var(--text); }
 
 /* On narrow phones the four labels alone fill the row; the icons are the
-   first thing to go rather than letting "Winter" clip. */
+   first thing to go rather than letting "Midnight" clip. */
 @media (max-width: 430px) {
   .row-skies { gap: 6px; }
   .row-skies .chip svg { display: none; }
