@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Yozakura</title>
+<meta name="description" content="Night-blossom QR codes. Point it at any URL and the petals fall into place to build a scannable code.">
+<meta name="color-scheme" content="dark">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body data-sky="midnight">
+
+<a class="brand" href="https://nextlvl.win" aria-label="Yozakura — back to nextlvl.win">
+  <svg viewBox="0 0 34 34" aria-hidden="true" width="30" height="30">
+    <rect x="1" y="1" width="12" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="2.6"/>
+    <rect x="21" y="1" width="12" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="2.6"/>
+    <rect x="1" y="21" width="12" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="2.6"/>
+    <path d="M21 21h5v5h-5zM28 28h5v5h-5z" fill="currentColor"/>
+  </svg>
+  <span>Yozakura</span>
+  <i class="brand-jp" aria-hidden="true">夜桜</i>
+</a>
+
+<main id="stage" data-state="grown">
+  <canvas id="stage-canvas" tabindex="0" role="button"
+          aria-label="Interactive tree. Activate to assemble the QR code."></canvas>
+
+  <div class="stage-tools">
+    <button id="sound" class="tool" type="button" aria-pressed="false" aria-label="Toggle sound">
+      <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h3.5L12 19V5L7.5 9z"/><path class="sound-on" d="M16 9.5a3.5 3.5 0 0 1 0 5M18.5 7a7 7 0 0 1 0 10"/><path class="sound-off" d="m16.5 10 5 4m0-4-5 4"/></g></svg>
+    </button>
+  </div>
+
+  <div class="stage-foot">
+    <button id="reveal" class="hint" type="button">
+      <span id="hint">Tap the tree to raise the code</span>
+    </button>
+  </div>
+
+  <div id="go" class="go" hidden>
+    <span class="go-text" aria-live="polite">Continue to <b class="go-host"></b></span>
+    <button id="go-now" class="go-now" type="button">Go<span class="go-count"></span></button>
+    <button id="go-cancel" class="go-cancel" type="button">Stay</button>
+  </div>
+</main>
+
+<section class="panel" aria-label="QR code settings">
+
+  <div class="row row-url">
+    <label class="field">
+      <span class="field-label">Destination URL</span>
+      <input id="url" type="url" inputmode="url" autocomplete="off" autocorrect="off"
+             spellcheck="false" placeholder="https://example.com/">
+    </label>
+    <button id="poster-open" class="btn btn-primary" type="button" title="Show a printable QR code">
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+        <path d="M12 3v11m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"
+              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>Save</span>
+    </button>
+  </div>
+
+  <p id="status" class="status" role="status"></p>
+
+  <div class="row row-skies" role="group" aria-label="Time of night">
+    <button class="chip" type="button" data-sky="midnight" aria-pressed="true">
+      <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 14.6A8 8 0 0 1 9.4 4.5a8 8 0 1 0 10.1 10.1z"/></g></svg>
+      Midnight
+    </button>
+    <button class="chip" type="button" data-sky="twilight" aria-pressed="false">
+      <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 18h18"/><path d="M7.5 18a4.5 4.5 0 0 1 9 0"/><path d="M12 6.5V4M5.6 9.1 4 7.5M18.4 9.1 20 7.5"/></g></svg>
+      Twilight
+    </button>
+    <button class="chip" type="button" data-sky="dusk" aria-pressed="false">
+      <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 17h18M6 20h12"/><circle cx="12" cy="11" r="3.4"/><path d="M12 4.2V6"/></g></svg>
+      Dusk
+    </button>
+    <button class="chip" type="button" data-sky="sunset" aria-pressed="false">
+      <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 19h18"/><path d="M8 19a4 4 0 0 1 8 0"/><path d="M12 3v3M4.9 7.4 6.6 9M19.1 7.4 17.4 9M2.5 13H5M19 13h2.5"/></g></svg>
+      Sunset
+    </button>
+  </div>
+
+  <div class="row row-accents" role="group" aria-label="Foliage colour">
+    <button class="swatch" type="button" data-accent="sakura" style="--sw:#ff8fb1" aria-pressed="true"  aria-label="Sakura"></button>
+    <button class="swatch" type="button" data-accent="rose"   style="--sw:#ff5c8a" aria-pressed="false" aria-label="Rose"></button>
+    <button class="swatch" type="button" data-accent="violet" style="--sw:#b39dff" aria-pressed="false" aria-label="Violet"></button>
+    <button class="swatch" type="button" data-accent="cyan"   style="--sw:#7fe3f5" aria-pressed="false" aria-label="Cyan"></button>
+    <button class="swatch" type="button" data-accent="gold"   style="--sw:#ffd9a0" aria-pressed="false" aria-label="Gold"></button>
+    <button class="swatch" type="button" data-accent="frost"  style="--sw:#d9e4ff" aria-pressed="false" aria-label="Frost"></button>
+  </div>
+
+  <div class="row row-cycle">
+    <button id="cycle-toggle" class="chip chip-cycle" type="button" aria-pressed="false">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14.3-4.9M4 13a8 8 0 0 0 14.3 4.9"/><path d="M4.5 2.5v3.8h3.8M19.5 21.5v-3.8h-3.8"/></g></svg>
+      Let the night drift
+    </button>
+    <select id="cycle" class="cycle-select" aria-label="Seconds between colour changes">
+      <option value="0">Off</option>
+      <option value="5">5s</option>
+      <option value="8">8s</option>
+      <option value="15">15s</option>
+      <option value="30">30s</option>
+    </select>
+  </div>
+
+  <details class="advanced">
+    <summary>Redirect &amp; encoding</summary>
+
+    <div class="adv-grid">
+      <label class="field field-sm">
+        <span class="field-label">What the code points at</span>
+        <select id="target">
+          <option value="direct">Straight to the destination</option>
+          <option value="grove">Through this page (animated, re-pointable)</option>
+        </select>
+      </label>
+
+      <label class="field field-sm">
+        <span class="field-label">Auto-continue after reveal</span>
+        <select id="auto-redirect">
+          <option value="0">Off — visitor taps Continue</option>
+          <option value="3">After 3 seconds</option>
+          <option value="5">After 5 seconds</option>
+          <option value="10">After 10 seconds</option>
+        </select>
+      </label>
+
+      <label class="field field-sm">
+        <span class="field-label">Link base for scanned codes</span>
+        <input id="link-base" type="url" spellcheck="false" autocomplete="off">
+      </label>
+
+      <label class="field field-sm">
+        <span class="field-label">Error correction</span>
+        <select id="ecl">
+          <option value="L">L — smallest code</option>
+          <option value="M" selected>M — balanced</option>
+          <option value="Q">Q — tolerant</option>
+          <option value="H">H — most tolerant</option>
+        </select>
+      </label>
+    </div>
+
+    <label class="field field-sm">
+      <span class="field-label">Shareable link</span>
+      <span class="share-row">
+        <input id="share-link" type="text" readonly spellcheck="false">
+        <button id="copy-share" class="btn btn-ghost" type="button">Copy</button>
+      </span>
+    </label>
+
+    <p class="note">
+      <b>Straight to the destination</b> puts the URL inside the code itself — the most
+      reliable choice, though reprinting is the only way to change where it leads.
+      <b>Through this page</b> encodes a link back to the <i>link base</i> above, carrying the
+      destination with it, so whoever scans gets the animation before they arrive. Set the
+      link base to the host you will actually deploy to — or to a short link you control, if
+      you want to be able to re-point a code that is already printed.
+    </p>
+  </details>
+</section>
+
+<div id="poster" class="poster" hidden role="dialog" aria-modal="true" aria-label="Printable QR code">
+  <div class="poster-card">
+    <img id="poster-img" alt="QR code for the destination URL">
+    <p id="poster-caption" class="poster-caption"></p>
+    <div class="poster-actions">
+      <button id="poster-download" class="btn btn-primary" type="button">Download PNG</button>
+      <button class="btn btn-ghost poster-close" type="button">Close</button>
+    </div>
+    <p id="poster-note" class="note">Or press and hold the image (right-click on desktop) to save it.</p>
+  </div>
+</div>
+
+<script src="js/qr.js"></script>
+<script src="js/scene.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

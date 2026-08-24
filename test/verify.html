@@ -1,0 +1,92 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>QR encoder verification</title>
+<style>
+  body { font: 13px/1.5 ui-monospace, Menlo, monospace; padding: 20px; background:#111; color:#ddd; }
+  #out { white-space: pre-wrap; }
+  .ok { color: #6f6; } .bad { color: #f66; font-weight: bold; }
+  canvas { image-rendering: pixelated; margin: 4px; border: 1px solid #333; }
+</style>
+<h1>QR encoder verification</h1>
+<div id="out">running…</div>
+<div id="gallery"></div>
+<script src="../src/js/qr.js"></script>
+<script>
+const out = document.getElementById('out');
+const gallery = document.getElementById('gallery');
+const log = (msg, cls) => { const s = document.createElement('div'); if (cls) s.className = cls; s.textContent = msg; out.appendChild(s); };
+
+function render(qr, scale, quiet) {
+  const c = document.createElement('canvas');
+  const dim = (qr.size + quiet * 2) * scale;
+  c.width = c.height = dim;
+  const g = c.getContext('2d');
+  g.fillStyle = '#fff'; g.fillRect(0, 0, dim, dim);
+  g.fillStyle = '#000';
+  for (let y = 0; y < qr.size; y++)
+    for (let x = 0; x < qr.size; x++)
+      if (qr.get(x, y)) g.fillRect((x + quiet) * scale, (y + quiet) * scale, scale, scale);
+  return c;
+}
+
+// A round-trip through the browser's native (Vision-backed) QR decoder.
+async function main() {
+  out.textContent = '';
+  if (!('BarcodeDetector' in window)) { log('BarcodeDetector unavailable', 'bad'); return; }
+  const det = new BarcodeDetector({ formats: ['qr_code'] });
+
+  const payloads = [
+    'https://icqr.com/',
+    'https://example.com',
+    'HTTP://EXAMPLE.COM/PATH',
+    '1234567890',
+    'https://qr-grove.example.com/?q=MDJodHRwczovL2ljcXIuY29tLw',
+    'https://www.a-rather-long-domain-name-for-testing.example.org/some/deep/path?utm_source=tree&utm_medium=qr&utm_campaign=launch#section-4',
+    'https://例え.テスト/日本語のパス',
+    'mailto:hello@example.com?subject=Hi%20there',
+    'tel:+15551234567',
+    'A'.repeat(400),
+    'x'.repeat(1200),
+    JSON.stringify({ v: 1, url: 'https://example.com', theme: 'spring', accent: 3 }),
+    'https://example.com/' + 'seg/'.repeat(120)
+  ];
+  const levels = ['L', 'M', 'Q', 'H'];
+  const minVersions = [1, 5, 12, 27];
+
+  let pass = 0, fail = 0, skipped = 0;
+  const failures = [];
+
+  for (const text of payloads) {
+    for (const ecl of levels) {
+      for (const mv of minVersions) {
+        let qr;
+        try {
+          qr = QR.encode(text, { ecl, minVersion: mv, boostEcl: false });
+        } catch (e) { skipped++; continue; }
+        const scale = qr.size > 90 ? 4 : 6;
+        const canvas = render(qr, scale, 4);
+        let got = null, err = null;
+        try {
+          const res = await det.detect(canvas);
+          got = res.length ? res[0].rawValue : null;
+        } catch (e) { err = e.message; }
+        const label = `v${String(qr.version).padStart(2)} ${ecl} mask${qr.mask} size${qr.size} "${text.slice(0, 34)}${text.length > 34 ? '…' : ''}"`;
+        if (got === text) { pass++; }
+        else {
+          fail++;
+          failures.push({ label, got, err, canvas });
+        }
+      }
+    }
+  }
+
+  log(`PASS ${pass}   FAIL ${fail}   skipped(too long) ${skipped}`, fail ? 'bad' : 'ok');
+  for (const f of failures.slice(0, 12)) {
+    log('FAIL ' + f.label + '  -> ' + (f.err ? 'ERR ' + f.err : JSON.stringify(String(f.got).slice(0, 60))), 'bad');
+    gallery.appendChild(f.canvas);
+  }
+  window.__RESULT__ = { pass, fail, skipped, failures: failures.map(f => f.label + ' => ' + f.got) };
+  document.title = fail ? 'FAIL ' + fail : 'ALL PASS ' + pass;
+}
+main().catch(e => { log('crash: ' + e.stack, 'bad'); window.__RESULT__ = { crash: e.message }; });
+</script>

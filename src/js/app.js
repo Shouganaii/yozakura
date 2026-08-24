@@ -1,0 +1,600 @@
+/* =============================================================================
+ * app.js — themes, controls, and the link/redirect plumbing.
+ * ========================================================================== */
+(function (global) {
+  'use strict';
+
+  /* ===========================================================================
+   * MAKE IT YOURS
+   *
+   * Everything that names the site lives here. Change these strings and the
+   * wordmark, the browser tab, every prompt and the saved filename follow —
+   * nothing else in the codebase hard-codes a name. The mark itself is the
+   * inline <svg> inside the .brand link in index.html; swap that for your own
+   * and the design is fully yours.
+   * ======================================================================== */
+  const BRAND = {
+    name: 'Yozakura',
+    title: 'Yozakura',
+    /* Where the wordmark links back to. */
+    home: 'https://nextlvl.win',
+    /* What the pill under the scene says in each state. */
+    prompts: {
+      grown: 'Tap the tree to raise the code',
+      revealing: 'Falling…',
+      revealed: 'Tap again to let it grow',
+      regrowing: 'Growing…'
+    },
+    downloadName: 'yozakura-qr.png'
+  };
+
+  const mix = global.Grove.mixHex;
+
+  /* ------------------------------------------------------------- palettes */
+  /* A sky sets the environment; an accent sets the blossom. The four skies walk
+   * the nextlvl.win sky ramp (--sky-1 … --sky-4) from deep night to sunset, so
+   * the scene sits inside the same night-city world as the rest of the site.
+   * Yozakura — 夜桜, blossom seen after dark — is why they are all night. */
+  const SKIES = [
+    { id: 'midnight', label: 'Midnight',
+      skyTop: '#0c0819', skyBottom: '#241243', sky: '#150d2c',
+      paper: '#ffffff', stage: '#0c0819',
+      ground: '#1a1030', paving: '#221540', rim: '#120b24',
+      ink: '#07040f', bark: '#3d2f4f',
+      grass: ['#24413c', '#2f5148', '#3b6455'],
+      stars: 1.0, bloom: 0.54, vignette: 0.34 },
+
+    { id: 'twilight', label: 'Twilight',
+      skyTop: '#120a2a', skyBottom: '#2a1550', sky: '#1d1039',
+      paper: '#ffffff', stage: '#120a2a',
+      ground: '#241645', paving: '#2d1c54', rim: '#170e30',
+      ink: '#0a0616', bark: '#473557',
+      grass: ['#2a4744', '#365a52', '#446d5f'],
+      stars: 0.7, bloom: 0.5, vignette: 0.3 },
+
+    { id: 'dusk', label: 'Dusk',
+      skyTop: '#2a1550', skyBottom: '#5b2a63', sky: '#3f1f59',
+      paper: '#ffffff', stage: '#22114a',
+      ground: '#3a2058', paving: '#452866', rim: '#26143c',
+      ink: '#0f0820', bark: '#573d59',
+      grass: ['#3b5350', '#48655e', '#57786c'],
+      stars: 0.34, bloom: 0.46, vignette: 0.26 },
+
+    { id: 'sunset', label: 'Sunset',
+      skyTop: '#5b2a63', skyBottom: '#a34d70', sky: '#7c3b69',
+      paper: '#ffffff', stage: '#43204c',
+      ground: '#5c2f5e', paving: '#6b3868', rim: '#3d1f45',
+      ink: '#180a1c', bark: '#69444f',
+      grass: ['#55565a', '#656a68', '#767d77'],
+      stars: 0.1, bloom: 0.42, vignette: 0.22 }
+  ];
+
+  /* Panel chrome, lifted straight from the site's tokens: --bg-alt for the
+   * glass, --border for the hairlines, --text / --text-dim for type. Every sky
+   * is a night sky, so there is only one set. */
+  const CHROME = {
+    panel: 'rgba(16, 11, 33, 0.74)',
+    panelLine: 'rgba(255, 255, 255, 0.10)',
+    text: '#f3ecff',
+    textDim: '#b6aad4',
+    field: 'rgba(255, 255, 255, 0.05)',
+    chip: 'rgba(255, 255, 255, 0.045)',
+    chipOn: 'rgba(255, 255, 255, 0.12)',
+    tool: 'rgba(16, 11, 33, 0.62)'
+  };
+
+  /* The site's own accents: --pink, its hover rose, --violet, --cyan, --gold. */
+  const ACCENTS = [
+    { id: 'sakura', label: 'Sakura', hex: '#ff8fb1' },
+    { id: 'rose',   label: 'Rose',   hex: '#ff5c8a' },
+    { id: 'violet', label: 'Violet', hex: '#b39dff' },
+    { id: 'cyan',   label: 'Cyan',   hex: '#7fe3f5' },
+    { id: 'gold',   label: 'Gold',   hex: '#ffd9a0' },
+    { id: 'frost',  label: 'Frost',  hex: '#d9e4ff' }
+  ];
+
+  function buildTheme(skyIdx, accentIdx) {
+    const s = SKIES[skyIdx] || SKIES[0];
+    const a = ACCENTS[accentIdx] || ACCENTS[0];
+    /* The site's accents are already bright against a night sky; a touch of
+     * white keeps the deepest sky from swallowing the darker leaf tones. */
+    const base = mix(a.hex, '#ffffff', 0.06);
+    return Object.assign({}, s, {
+      accent: base,
+      leaf: [
+        base,
+        mix(base, '#ffffff', 0.24),
+        mix(base, '#000000', 0.16),
+        mix(base, '#ffffff', 0.44),
+        mix(base, '#000000', 0.3)
+      ],
+      glow: 'rgba(255,236,190,ALPHA)',
+      glowSolid: mix(base, '#ffffff', 0.55)
+    });
+  }
+
+  /* --------------------------------------------------------- link encoding */
+  /* Share links carry `?q=<base64url>` whose plaintext is two digits of style
+   * followed by the destination URL — compact, and readable when decoded. */
+  function toBase64Url(str) {
+    const bytes = new TextEncoder().encode(str);
+    let bin = '';
+    for (const b of bytes) bin += String.fromCharCode(b);
+    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  function fromBase64Url(b64) {
+    let s = b64.replace(/-/g, '+').replace(/_/g, '/');
+    while (s.length % 4) s += '=';
+    const bin = atob(s);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
+  }
+
+  function encodeConfig(cfg) {
+    const sky = String(cfg.sky % 10);
+    const accent = String(cfg.accent % 10);
+    return toBase64Url(sky + accent + cfg.url);
+  }
+
+  function decodeConfig(q) {
+    if (!q) return null;
+    try {
+      const plain = fromBase64Url(q);
+      const sky = parseInt(plain[0], 10);
+      const accent = parseInt(plain[1], 10);
+      const url = plain.slice(2);
+      if (!url) return null;
+      return {
+        sky: Number.isNaN(sky) ? 0 : Math.min(sky, SKIES.length - 1),
+        accent: Number.isNaN(accent) ? 0 : Math.min(accent, ACCENTS.length - 1),
+        url: url
+      };
+    } catch (e) { return null; }
+  }
+
+  /* Accept what people actually type: bare domains get https://. */
+  function normaliseUrl(raw) {
+    let v = String(raw || '').trim();
+    if (!v) return '';
+    if (/^[a-z][a-z0-9+.-]*:/i.test(v)) return v;
+    if (v.startsWith('//')) return 'https:' + v;
+    return 'https://' + v.replace(/^\/+/, '');
+  }
+
+  /* ------------------------------------------------------------------- app */
+  const els = {};
+  const state = {
+    url: 'https://example.com/',
+    sky: 0,
+    accent: 1,
+    ecl: 'M',
+    /* 'direct'  — the QR holds the destination itself; always scannable.
+     * 'grove'   — the QR holds a link back to this page, which plays the
+     *             animation and then forwards. Lets you re-point the
+     *             destination later without reprinting the code. */
+    target: 'direct',
+    autoRedirect: 0,
+    /* Seconds between automatic colour changes; 0 is off. */
+    cycle: 0,
+    sound: false,
+    /* Where scanned codes should land. Defaults to wherever this page is
+     * served from, but you can point it at your production host (or a short
+     * link that forwards here) while building codes locally. */
+    base: ''
+  };
+  let scene = null;
+  let arrivedVia = null;
+  let redirectTimer = null;
+
+  /* What is on screen right now. Normally this tracks the chosen style, but
+   * while the auto-cycle runs it drifts on its own. Keeping it separate from
+   * `state` is what stops a drifting colour from rewriting the encoded payload
+   * — in "through this page" mode the style is part of the link, so a cycling
+   * garden would otherwise mutate a code somebody has already printed. */
+  const view = { sky: 0, accent: 1 };
+
+  function $(sel) { return document.querySelector(sel); }
+
+  function qrPayload() {
+    if (state.target === 'grove') return shareLink();
+    return normaliseUrl(state.url);
+  }
+
+  function defaultBase() { return location.origin + location.pathname; }
+
+  function shareLink() {
+    const base = (state.base || defaultBase()).replace(/[?#].*$/, '');
+    const q = encodeConfig({ sky: state.sky, accent: state.accent, url: normaliseUrl(state.url) });
+    const extra = state.autoRedirect > 0 ? '&go=' + state.autoRedirect : '';
+    return base + '?q=' + q + extra;
+  }
+
+  function rebuildQr() {
+    const payload = qrPayload();
+    let qr;
+    try {
+      qr = global.QR.encode(payload, { ecl: state.ecl, boostEcl: state.ecl === 'M' });
+    } catch (e) {
+      setStatus('That URL is too long to encode — try shortening it.', true);
+      return;
+    }
+    setStatus('Version ' + qr.version + ' · ' + qr.ecl + ' · ' + qr.size + '×' + qr.size + ' modules');
+    scene.setMatrix(qr);
+    els.share.value = shareLink();
+    updateHistory();
+  }
+
+  function applyTheme(animate) {
+    const skyDef = SKIES[view.sky] || SKIES[0];
+    const theme = buildTheme(view.sky, view.accent);
+    scene.setTheme(theme, animate);
+
+    const root = document.documentElement.style;
+    root.setProperty('--sky', theme.skyBottom);
+    root.setProperty('--sky-top', theme.skyTop);
+    root.setProperty('--accent', theme.accent);
+    root.setProperty('--ink', '#0d0820');
+    root.setProperty('--rim', theme.rim);
+    root.setProperty('--panel', CHROME.panel);
+    root.setProperty('--panel-line', CHROME.panelLine);
+    root.setProperty('--text', CHROME.text);
+    root.setProperty('--text-dim', CHROME.textDim);
+    root.setProperty('--field', CHROME.field);
+    root.setProperty('--chip', CHROME.chip);
+    root.setProperty('--chip-on', CHROME.chipOn);
+    root.setProperty('--tool', CHROME.tool);
+    document.body.dataset.sky = skyDef.id;
+
+    els.skies.forEach((b, i) => b.setAttribute('aria-pressed', String(i === view.sky)));
+    els.accents.forEach((b, i) => b.setAttribute('aria-pressed', String(i === view.accent)));
+  }
+
+  /* ---------------------------------------------------------- auto-cycle */
+  /* Walks the foliage colours, and moves the sky on each full lap, so the scene
+   * drifts from midnight round to sunset if left alone. */
+  let cycleTimer = null;
+
+  function stopCycle() {
+    clearTimeout(cycleTimer);
+    cycleTimer = null;
+  }
+
+  function scheduleCycle() {
+    stopCycle();
+    if (!state.cycle) return;
+    cycleTimer = setTimeout(() => {
+      const nextAccent = (view.accent + 1) % ACCENTS.length;
+      if (nextAccent === 0) view.sky = (view.sky + 1) % SKIES.length;
+      view.accent = nextAccent;
+      applyTheme(true);          // display only — the code is left alone
+      scheduleCycle();
+    }, state.cycle * 1000);
+  }
+
+  function setCycle(seconds) {
+    const wasOn = state.cycle > 0;
+    state.cycle = seconds;
+    els.cycle.value = String(seconds);
+    document.querySelector('#cycle-toggle').setAttribute('aria-pressed', String(seconds > 0));
+    try { localStorage.setItem('grove.cycle', String(seconds)); } catch (e) { /* private mode */ }
+
+    /* Stopping adopts whatever is on screen — "stop here" is what the button
+     * looks like it does, so the encoded style should follow the eye. */
+    if (wasOn && seconds === 0 &&
+        (state.sky !== view.sky || state.accent !== view.accent)) {
+      state.sky = view.sky;
+      state.accent = view.accent;
+      els.share.value = shareLink();
+      updateHistory();
+      if (state.target === 'grove') rebuildQr();
+    }
+    scheduleCycle();
+  }
+
+  function setStatus(msg, isError) {
+    els.status.textContent = msg;
+    els.status.classList.toggle('is-error', !!isError);
+  }
+
+  /* The editing session keeps its state in the hash so a reload restores the
+   * work in progress. Arrivals from a scanned code carry `?q=` instead, which
+   * is what switches the page into visitor mode — otherwise refreshing while
+   * building a code would look identical to someone scanning it. */
+  function updateHistory() {
+    const q = encodeConfig({ sky: state.sky, accent: state.accent, url: normaliseUrl(state.url) });
+    const extra = state.autoRedirect > 0 ? '&go=' + state.autoRedirect : '';
+    try {
+      history.replaceState(null, '', location.pathname + location.search + '#q=' + q + extra);
+    } catch (e) {
+      /* Sandboxed frames refuse history writes; session restore is a bonus,
+       * not something worth breaking the encoder over. */
+    }
+  }
+
+  /* --------------------------------------------------------------- reveal */
+  function onStateChange(s) {
+    els.hint.textContent = BRAND.prompts[s] || BRAND.prompts.grown;
+    els.stage.dataset.state = s;
+
+    if (s === 'revealed') {
+      if (global.GroveAudio && state.sound) global.GroveAudio.chime();
+      /* Anyone who got here by scanning needs a way onward, whether or not
+       * the countdown is switched on. */
+      if (arrivedVia) showContinue();
+    }
+    if (s !== 'revealed' && redirectTimer) cancelRedirect();
+    if (s === 'revealing' && global.GroveAudio && state.sound) global.GroveAudio.gust();
+  }
+
+  function showContinue() {
+    if (!arrivedVia) return;
+    let host = arrivedVia.url;
+    try { host = new URL(normaliseUrl(arrivedVia.url)).host || arrivedVia.url; } catch (e) { /* keep raw */ }
+    els.go.querySelector('.go-host').textContent = host;
+    els.go.hidden = false;
+
+    const count = els.go.querySelector('.go-count');
+    if (state.autoRedirect <= 0) { count.textContent = ''; return; }
+
+    let left = state.autoRedirect;
+    const tick = () => {
+      count.textContent = ' · ' + left + 's';
+      if (left <= 0) { location.href = normaliseUrl(arrivedVia.url); return; }
+      left--;
+      redirectTimer = setTimeout(tick, 1000);
+    };
+    tick();
+  }
+
+  function cancelRedirect() {
+    clearTimeout(redirectTimer);
+    redirectTimer = null;
+    const count = els.go && els.go.querySelector('.go-count');
+    if (count) count.textContent = '';
+  }
+
+  /* ------------------------------------------------------------ flat export */
+  /* A plain, high-contrast rendering with a proper quiet zone — this is the
+   * one to print, never a screenshot of the isometric scene. */
+  function renderFlat(scale, quiet) {
+    const qr = scene.qr;
+    const q = quiet === undefined ? 4 : quiet;
+    const dim = (qr.size + q * 2) * scale;
+    const c = document.createElement('canvas');
+    c.width = c.height = dim;
+    const g = c.getContext('2d');
+    g.fillStyle = '#ffffff';
+    g.fillRect(0, 0, dim, dim);
+    g.fillStyle = '#000000';
+    for (let y = 0; y < qr.size; y++) {
+      for (let x = 0; x < qr.size; x++) {
+        if (qr.get(x, y)) g.fillRect((x + q) * scale, (y + q) * scale, scale, scale);
+      }
+    }
+    return c;
+  }
+
+  function openPoster() {
+    const canvas = renderFlat(Math.max(6, Math.ceil(1400 / (scene.qr.size + 8))), 4);
+    els.posterImg.src = canvas.toDataURL('image/png');
+    els.posterCaption.textContent = qrPayload();
+    const note = $('#poster-note');
+    if (note) note.textContent = 'Or press and hold the image (right-click on desktop) to save it.';
+    els.poster.hidden = false;
+    els.poster.querySelector('.poster-close').focus();
+    els.posterDownload.onclick = () => savePng(canvas);
+  }
+
+  /* Two ways to hand over the PNG. A page published as a Claude Artifact runs
+   * sandboxed, where an <a download> does nothing, so it saves through the
+   * host's own confirmation flow; anywhere else the ordinary object-URL link is
+   * what works. Feature-detected, so one build covers both. */
+  async function savePng(canvas) {
+    const button = els.posterDownload;
+    const note = $('#poster-note');
+    const say = (msg) => { if (note) note.textContent = msg; };
+    const blob = await new Promise((res) => canvas.toBlob(res, 'image/png'));
+    if (!blob) { say('Could not render the image.'); return; }
+
+    const host = global.claude;
+    const downloads = host && typeof host.use === 'function' ? await host.use('downloads') : null;
+
+    if (downloads) {
+      button.disabled = true;
+      try {
+        await downloads.save({ filename: BRAND.downloadName, data: blob });
+        say('Saved.');
+      } catch (err) {
+        say(err && err.code === 'declined'
+          ? 'Save cancelled.'
+          : 'Could not save here — press and hold the image instead.');
+      } finally {
+        button.disabled = false;
+      }
+      return;
+    }
+
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = BRAND.downloadName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  }
+
+  async function copy(text, button) {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (e) {
+      const t = document.createElement('textarea');
+      t.value = text; document.body.appendChild(t); t.select();
+      try { document.execCommand('copy'); } catch (e2) { /* nothing more to try */ }
+      t.remove();
+    }
+    const old = button.dataset.label || button.textContent;
+    button.dataset.label = old;
+    button.textContent = 'Copied';
+    setTimeout(() => { button.textContent = button.dataset.label; }, 1400);
+  }
+
+  /* ------------------------------------------------------------------ boot */
+  function init() {
+    document.title = BRAND.title;
+    const brand = document.querySelector('.brand');
+    const wordmark = brand && brand.querySelector('span');
+    if (wordmark) wordmark.textContent = BRAND.name;
+    if (brand && BRAND.home) brand.href = BRAND.home;
+
+    els.canvas = $('#stage-canvas');
+    els.stage = $('#stage');
+    els.hint = $('#hint');
+    els.url = $('#url');
+    els.status = $('#status');
+    els.share = $('#share-link');
+    els.go = $('#go');
+    els.poster = $('#poster');
+    els.posterImg = $('#poster-img');
+    els.posterCaption = $('#poster-caption');
+    els.posterDownload = $('#poster-download');
+    /* Scoped to buttons: <body> also carries data-sky as a styling hook, and
+     * an unscoped selector picks it up and shifts every index by one. */
+    els.skies = Array.from(document.querySelectorAll('button[data-sky]'));
+    els.accents = Array.from(document.querySelectorAll('button[data-accent]'));
+
+    scene = new global.Grove.Scene(els.canvas, { onStateChange });
+
+    /* `?q=` means a visitor scanned a code; `#q=` is our own session restore. */
+    const params = new URLSearchParams(location.search);
+    const hashParams = new URLSearchParams(location.hash.replace(/^#/, ''));
+    const scanned = params.get('q');
+    const cfg = decodeConfig(scanned || hashParams.get('q') || '');
+    if (cfg) {
+      state.url = cfg.url;
+      state.sky = cfg.sky;
+      state.accent = cfg.accent;
+      if (scanned) arrivedVia = cfg;
+      const go = parseInt((scanned ? params : hashParams).get('go') || '0', 10);
+      state.autoRedirect = Number.isNaN(go) ? 0 : Math.min(Math.max(go, 0), 60);
+    }
+
+    try { state.base = localStorage.getItem('grove.base') || ''; } catch (e) { state.base = ''; }
+
+    els.url.value = state.url;
+    els.autoRedirect = $('#auto-redirect');
+    els.autoRedirect.value = String(state.autoRedirect);
+    els.base = $('#link-base');
+    els.base.value = state.base;
+    els.base.placeholder = defaultBase();
+    els.cycle = $('#cycle');
+
+    let savedCycle = 0;
+    try { savedCycle = parseInt(localStorage.getItem('grove.cycle') || '0', 10) || 0; } catch (e) { savedCycle = 0; }
+
+    view.sky = state.sky;
+    view.accent = state.accent;
+    applyTheme(false);
+    rebuildQr();
+    setCycle(scene.reducedMotion ? 0 : savedCycle);
+
+    /* --- controls --- */
+    let debounce;
+    els.url.addEventListener('input', () => {
+      clearTimeout(debounce);
+      debounce = setTimeout(() => {
+        state.url = els.url.value;
+        rebuildQr();
+      }, 260);
+    });
+    els.url.addEventListener('change', () => {
+      els.url.value = normaliseUrl(els.url.value);
+      state.url = els.url.value;
+      rebuildQr();
+    });
+
+    const pickTheme = (fn) => () => {
+      fn();
+      applyTheme(true);
+      updateHistory();
+      els.share.value = shareLink();
+      if (state.target === 'grove') rebuildQr();
+      scheduleCycle();          // a manual pick restarts the clock
+    };
+    els.skies.forEach((b, i) => b.addEventListener('click', pickTheme(() => { state.sky = view.sky = i; })));
+    els.accents.forEach((b, i) => b.addEventListener('click', pickTheme(() => { state.accent = view.accent = i; })));
+
+    els.cycle.addEventListener('change', (e) => setCycle(parseInt(e.target.value, 10) || 0));
+    $('#cycle-toggle').addEventListener('click', () => {
+      setCycle(state.cycle > 0 ? 0 : 8);
+    });
+
+    $('#reveal').addEventListener('click', () => scene.toggle());
+    $('#poster-open').addEventListener('click', openPoster);
+    $('#copy-share').addEventListener('click', (e) => copy(shareLink(), e.currentTarget));
+    els.poster.querySelector('.poster-close').addEventListener('click', () => { els.poster.hidden = true; });
+    els.poster.addEventListener('click', (e) => { if (e.target === els.poster) els.poster.hidden = true; });
+
+    $('#target').addEventListener('change', (e) => {
+      state.target = e.target.value;
+      rebuildQr();
+    });
+    $('#ecl').addEventListener('change', (e) => {
+      state.ecl = e.target.value;
+      rebuildQr();
+    });
+    els.autoRedirect.addEventListener('change', (e) => {
+      state.autoRedirect = parseInt(e.target.value, 10) || 0;
+      els.share.value = shareLink();
+      updateHistory();
+      if (state.target === 'grove') rebuildQr();
+    });
+
+    els.base.addEventListener('change', (e) => {
+      state.base = e.target.value.trim();
+      try { localStorage.setItem('grove.base', state.base); } catch (err) { /* private mode */ }
+      els.share.value = shareLink();
+      if (state.target === 'grove') rebuildQr();
+    });
+
+    $('#sound').addEventListener('click', (e) => {
+      state.sound = !state.sound;
+      e.currentTarget.setAttribute('aria-pressed', String(state.sound));
+      if (state.sound && global.GroveAudio) global.GroveAudio.enable();
+      else if (global.GroveAudio) global.GroveAudio.disable();
+    });
+
+    $('#go-now').addEventListener('click', () => {
+      if (arrivedVia) location.href = normaliseUrl(arrivedVia.url);
+    });
+    $('#go-cancel').addEventListener('click', () => {
+      cancelRedirect();
+      els.go.hidden = true;
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { els.poster.hidden = true; cancelRedirect(); els.go.hidden = true; }
+    });
+
+    /* Landing straight from a scanned code should show the payoff, not the
+     * puzzle — the visitor already scanned it, they want to arrive. */
+    if (arrivedVia) {
+      els.stage.dataset.arrived = 'true';
+      setTimeout(() => scene.reveal(), 700);
+    }
+
+    let resizeRaf;
+    global.addEventListener('resize', () => {
+      cancelAnimationFrame(resizeRaf);
+      resizeRaf = requestAnimationFrame(() => scene.resize());
+    });
+    scene.start();
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+
+  global.GroveApp = { BRAND, encodeConfig, decodeConfig, normaliseUrl, SKIES, ACCENTS, buildTheme,
+    get state() { return state; }, get scene() { return scene; }, renderFlat };
+})(window);

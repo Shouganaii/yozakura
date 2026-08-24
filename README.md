@@ -1,0 +1,294 @@
+# Yozakura 夜桜
+
+*Night blossom.* A companion piece for [nextlvl.win](https://nextlvl.win) — an
+interactive QR code that grows on a tree. Tap it and the leaves spiral down to
+land on the exact grid cells they encode — the code assembles itself out of the
+canopy, then the camera tilts to straight-down and the blocks flatten into a
+crisp, scannable symbol.
+
+Built from scratch: no libraries, no framework, no build toolchain beyond one
+Python script. `dist/yozakura.html` is a single self-contained file you can host
+anywhere — its only network request is the Google Fonts stylesheet, and there is
+a real fallback stack behind it if you'd rather delete that line.
+
+## Making it yours
+
+Everything that names the site sits in one block at the top of
+`src/js/app.js`:
+
+```js
+const BRAND = {
+  name: 'Yozakura',
+  title: 'Yozakura',
+  home: 'https://nextlvl.win',
+  prompts: { grown: 'Tap the tree to raise the code', … },
+  downloadName: 'yozakura-qr.png'
+};
+```
+
+Change those and the wordmark, the browser tab, the home link, every prompt and
+the saved filename follow — nothing else hard-codes a name. The mark itself is
+the inline `<svg>` in the `.brand` link in `src/index.html`. Palettes live in
+`SKIES`, `CHROME` and `ACCENTS` directly below.
+
+### Inherited from nextlvl.win
+
+The design is not its own island — it takes the site's tokens directly:
+
+| | Source |
+| --- | --- |
+| Skies | the site's `--sky-1 … --sky-4` ramp, `#120a2a → #2a1550 → #5b2a63 → #a34d70` |
+| Accents | `--pink` `#ff8fb1`, its hover rose `#ff5c8a`, `--violet`, `--cyan`, `--gold` |
+| Chrome | `--bg-alt` glass, `--border` hairlines, `--text` / `--text-dim` |
+| Wordmark | the site's `--grad`, clipped to the text, exactly as its `h1` does |
+| Type | Outfit for display, Inter for text, JetBrains Mono for the label caps |
+| Radius | the site's 20px on the large surfaces |
+
+Because every sky is a night sky, there is a single `CHROME` set rather than a
+light/dark pair.
+
+## The garden
+
+Four skies, walking the site's own ramp from deep night to sunset:
+
+| | Sky | Stars |
+| --- | --- | --- |
+| Midnight | `#0c0819` → `#241243` | full |
+| Twilight | `#120a2a` → `#2a1550` | fading |
+| Dusk | `#2a1550` → `#5b2a63` | a few |
+| Sunset | `#5b2a63` → `#a34d70` | almost none |
+
+A star field sits behind everything, densest toward the top of the frame, each
+star twinkling on its own slow cycle. Brightness is carried by radius rather
+than alpha, so the whole field goes down in a single fill.
+
+Six blossom accents sit on top. **Let the night drift** walks them on a timer
+and moves the sky on each full lap, so an idle screen travels from midnight
+round to sunset. It cross-fades every colour in the scene rather than snapping.
+
+That control is deliberately *display only*. In "through this page" mode the
+style is part of the encoded link, so a drifting colour would rewrite a code
+somebody has already printed — the cycle moves what you see and leaves the
+payload alone. Switching it off adopts whatever is on screen, which is what the
+button looks like it does.
+
+### The camera
+
+The shot is never quite still. A slow drift moves the yaw about ±9°, the pitch
+about ±3° and the zoom about ±4%, on three deliberately non-harmonic periods
+(41s, 57s, 34s) so the motion never visibly loops — the way an anime
+establishing shot keeps a frame alive without calling attention to itself.
+
+It fades out as the code takes over, and it yields: touch the scene and the
+drift drops to nothing, then eases back about four seconds after you let go, so
+it never fights you for the camera.
+
+### Falling petals
+
+A field of petals drifts across the viewport in two layers — one behind the
+scene, one in front — on a slow breeze that swells into a gust every few
+seconds and passes. Each petal tumbles as it falls: its width is scaled by
+`|cos(flip)|`, so it pinches to an edge and swells open again as it turns over.
+That foreshortening is the whole trick behind the effect; without it petals read
+as drifting confetti.
+
+The two layers are not decoration alone. Once the code goes flat the front layer
+fades out and only the back layer remains, drifting *behind* the card — so a
+petal never floats across a symbol somebody is trying to scan.
+
+### The floating card
+
+When the reveal settles, the code comes to rest on a white card that hangs in
+the air: a slow bob, a slower sway, a breath of scale, and a shadow beneath that
+tightens and darkens as the card sinks.
+
+The roll is capped at about **0.6°**. A bobbing code still scans; a tilting one
+starts to struggle, so the motion is nearly all translation. The background
+settles on a soft `stage` tone rather than white — a white card on a white page
+is invisible, and on the Winter palette the card hangs lit against the dusk.
+Every environment was checked against the decoder at multiple points in the bob
+cycle.
+
+### Leaves
+
+Every dark module of the code is a leaf. A short URL has only a few hundred, far
+too sparse for a canopy, so the surplus is **blossom that carries no data**: it
+hangs on the branches, and the gust tears it away and carries it out of frame
+while the encoding leaves stay behind and land. Chaff and signal, separating in
+front of you.
+
+The blossom count is chosen so a dense 25×25 canopy and a sparse 53×53 one both
+land at about 2,100 leaves, which keeps the look and the frame cost constant
+across URL lengths.
+
+---
+
+## Quick start
+
+Open `dist/yozakura.html` in a browser — that's it.
+
+To work on the source instead, serve the folder and open `src/index.html`:
+
+```bash
+python3 serve.py 4173
+```
+
+Then rebuild the single-file version after any change:
+
+```bash
+python3 build.py
+```
+
+## Changing where the code points
+
+**The everyday way.** Type into the *Destination URL* field. The code re-encodes
+as you type; the status line under it tells you which QR version and error
+correction level you ended up with.
+
+**Under *Redirect & encoding*** there are four controls:
+
+| Control | What it does |
+| --- | --- |
+| **What the code points at** | `Straight to the destination` puts the URL inside the code itself — most reliable, but reprinting is the only way to change it later. `Through this page` encodes a link back to this page carrying the destination, so anyone who scans sees the animation before they arrive. |
+| **Link base for scanned codes** | The host those "through this page" links point at. Defaults to wherever the page is being served from; set it to your production domain while building codes locally, or to a short link you control so a printed code can be re-pointed later. Remembered in `localStorage`. |
+| **Auto-continue after reveal** | Off, or a 3/5/10-second countdown before a visitor is forwarded to the destination. With it off they get a plain *Go* button. |
+| **Error correction** | `L` through `H`. Higher tolerates more damage and dirt at the cost of a denser code. `M` is boosted to `Q` automatically whenever that costs nothing. |
+
+### Link format
+
+Share links look like `?q=<base64url>&go=<seconds>`. The decoded payload is two
+digits of style followed by the destination:
+
+```
+"03https://example.org/landing"
+ ││└── URL
+ │└─── accent index (0-5)
+ └──── sky index (0-3)
+```
+
+The page distinguishes two ways of arriving:
+
+- **`?q=…` in the query string** means someone scanned a code. The page reveals
+  itself automatically and offers to continue to the destination.
+- **`#q=…` in the hash** is the editor's own session state, written on every
+  change so a reload restores your work in progress.
+
+That split matters — without it, refreshing while building a code would be
+indistinguishable from someone scanning it, and you'd get bounced to the
+destination you were editing.
+
+## Project layout
+
+```
+yozakura/
+├── src/
+│   ├── index.html
+│   ├── css/style.css
+│   └── js/
+│       ├── qr.js       QR Model 2 encoder, versions 1-40, ECC L/M/Q/H
+│       ├── scene.js    isometric renderer, tree growth, reveal choreography
+│       ├── audio.js    synthesised wind and chime (off by default)
+│       └── app.js      themes, controls, link encoding, redirect handling
+├── dist/
+│   ├── yozakura.html   single self-contained page — open or share this
+│   ├── index.html      identical bytes, named for a static host
+│   └── artifact.html   same page as body content, for Claude Artifacts
+├── test/verify.html    encoder round-trip suite
+├── build.py            inlines src/ into dist/
+└── serve.py            local static server
+```
+
+## Tuning the animation
+
+Every phase boundary lives in one table at the top of `src/js/scene.js`:
+
+```js
+const T = {
+  revealDuration: 2900,
+  regrowDuration: 2400,
+  gust:    [0.00, 0.18],  // wind ramps, canopy shivers
+  flight:  [0.06, 0.62],  // leaves detach and fly to their modules
+  sink:    [0.40, 0.58],  // trunk withdraws into the ground
+  tilt:    [0.52, 0.86],  // camera swings to straight-down
+  flatten: [0.62, 0.90],  // blocks collapse to paint
+  lock:    [0.86, 1.00]   // contrast snaps, scan-line sweeps
+};
+```
+
+Numbers are fractions of the whole reveal, so phases can overlap freely. A few
+other knobs worth knowing:
+
+- **Landing order** — each leaf's `priority` in `_buildTree` decides when it
+  flies. Finder patterns are hard-coded to go first, since they're the anchors a
+  scanner hunts for and it reads as intent rather than randomness.
+- **Block height** — `blockH` in `draw()` is measured in *cell* units, not as a
+  fraction of the grid. That's deliberate: tie it to grid size and a 53-module
+  code grows blocks so tall their sides bury the light modules between them.
+- **Tree shape** — seeded from the QR's version and mask, so a given URL always
+  grows the same tree.
+- **Framing** — `_fit` deliberately frames only about two thirds of the crown.
+  The outer blossom bleeds off the sides, which fills the stage and reads as a
+  canopy you're standing under rather than a specimen on a plinth.
+- **Blossom volume** — `fillerCount` in `_buildTree`. Raising it is the single
+  biggest lever on how lush the tree looks, and on frame cost.
+- **The verge** — grass grows in tufts, not evenly, which is most of what makes
+  it read as planted rather than scattered. `tufts` and the per-tuft `count` in
+  `_buildGrass` control density; each blade is two quadratic curves meeting at
+  the tip so it tapers like a real one, and about one in eighteen carries a
+  wildflower drawn from the blossom palette.
+- **Camera drift** — the three sinusoids in `_cinematic`.
+
+## Notes on the rendering
+
+Everything is one 2D canvas. The camera is orthographic with a `pitch` that
+animates from isometric (35°) to straight-down (90°), which is what turns the
+skewed floor pattern into something a phone can actually read.
+
+The one non-obvious performance rule: **canvas rasterises a path in time that
+grows faster than the number of subpaths in it.** Batching the whole 53×53 floor
+into a single path was *12× slower* than one fill per tile; flushing a row at a
+time is 2.7× faster than either. Geometry is therefore flushed in chunks of
+roughly 48 subpaths throughout. Once the blocks collapse to paint, the floor is
+a two-colour bitmap drawn with a single transformed `drawImage`.
+
+Leaves are bucketed by colour *and* by quantised alpha, so a whole cloud of
+fading blossom costs a handful of fills. Each leaf is a four-point pointed oval
+— the same vertex count as the rectangle it replaced, but it reads as blossom
+instead of confetti and fills fewer pixels.
+
+Measured worst frame, 2,100 leaves plus the drifting petal field: **2.8 ms**
+including the update step. Tripling the leaf count made it *faster* than the
+1,456-leaf rectangle version, which cost 7.3 ms — fill area, not object count,
+was the bottleneck.
+
+Because petals never stop falling there is no idle frame to skip, so the loop
+runs continuously; the settled state costs about 0.2 ms, and the loop is
+released entirely while the tab is hidden.
+
+## Verifying the encoder
+
+`test/verify.html` encodes a battery of payloads — ASCII, Unicode, numeric,
+alphanumeric, very long — across versions 1-31 and all four EC levels, renders
+each to a canvas, and reads it back with the browser's native `BarcodeDetector`
+(macOS Vision). Every symbol must round-trip to the exact input string.
+
+```bash
+python3 serve.py 4173   # then open http://127.0.0.1:4173/test/verify.html
+```
+
+Current status: **208 / 208 pass**. The rendered scene itself decodes from about
+70% of the way through the reveal onward, so the code is readable well before the
+animation settles.
+
+Requires a Chromium-based browser — `BarcodeDetector` is what makes this an
+independent check rather than the encoder grading its own homework.
+
+## Browser support
+
+Modern Chrome, Safari, Firefox and Edge. `prefers-reduced-motion` is honoured
+throughout — the reveal snaps between states instead of animating, palettes swap
+without a cross-fade, no petals fall, the card does not float, and the
+auto-cycle stays off. Opening `dist/index.html`
+straight off disk works, with one caveat: `file://` isn't a secure context, so
+*Copy* falls back to `document.execCommand` and `localStorage` may be unavailable
+(both are wrapped in try/catch).
