@@ -47,146 +47,69 @@ The design is not its own island — it takes the site's tokens directly:
 Because every sky is a night sky, there is a single `CHROME` set rather than a
 light/dark pair.
 
-## The garden
+## The moon
 
-Three scenes, each owning its sky, its ground, its foliage and whatever is
-falling through it:
+A low moon fills the frame. A cherry bough crosses it in silhouette, laden with
+blossom. The code lies latent in the moon's *maria* — the dark patches on its
+face — faint enough to miss and legible if you look for it.
 
-| | Sky | Falling |
-| --- | --- | --- |
-| Day | `#4aa8e0` → `#cfe9f4` | sun motes drifting |
-| Night | `#0c0819` → `#241243` | fireflies, stars, blossom lit from within |
-| Rainy | `#47555f` → `#98a9b4` | rain streaks, ripples, and a wet mark where each blossom lands |
+Tap it and the blossom lets go: it lifts off the bough, sweeps across the face
+on a bowed path, and settles into those patches until the code is solid. The
+emptied bough draws back off the frame as it goes, leaving the face clean.
 
-Rain falls hard and nearly straight, drawn as streaks rather than drops — a
-falling drop reads as a line at any shutter a screen can manage. In Rainy, a
-blossom that comes down leaves the mark of it on the stone for a moment after
-it has gone.
+Three moods, all of them night:
 
-Six accents pull the scene's foliage about a third of the way toward your pick.
-The accent owns the bloom, the wildflowers and the UI outright.
+| | Sky | Moon | Blossom |
+| --- | --- | --- | --- |
+| Hanami | `#0a0616` → `#231539` | warm ivory | pink |
+| Frost | `#05080f` → `#16243a` | blue-white | white |
+| Ember | `#12060e` → `#3a1424` | harvest gold | crimson |
 
-### Where the code is square, and where it isn't
+### No projection
 
-The garden sits **isometric** — the plot renders as a diamond. The reveal then
-rotates the plaza square-on and lifts the eye to straight down together, so the
-code lands as a **centred, axis-aligned square** with no perspective left for a
-scanner to undo.
+The garden this replaced was isometric, and most of its renderer was projection
+maths. There is none here. The moon is a disc, the code is a square inscribed in
+it, and the bough is drawn in screen space — which means the code is always
+axis-aligned and always square, with no perspective for a scanner to undo. That
+is a large part of why the redesign made the thing simpler rather than harder.
 
-That split is deliberate, and it cost three attempts to learn. Viewing the plot
-head-on so its *floor* reads as a screen-square puts the camera at yaw 0, and
-there a tree centred on its own floor either drapes its canopy straight across
-the plot (low pitch) or collapses the floor to a thin band (high pitch). Every
-head-on variant looked worse than the isometric one: canopy chopped at the
-frame edge, then a crown split into two lobes above a stub of trunk. The view
-that has to be square is the code's, not the garden's.
+`src/js/moon.js` replaces `scene.js` wholesale, keeping the same `Grove.Scene`
+interface so the app layer never learned which scene it is driving.
 
-Yaw runs 45° → 0° and never crosses zero, so the painter ordering the ground
-pass relies on stays valid the whole way through.
+### Fitting a square in a circle
 
-### Grass on the code
+The code's square has to stay inside the disc — a corner spilling onto the night
+sky stops the quiet zone being a quiet zone, and the code stops scanning. The
+inscribed square that touches the limb exactly is `1.41r`; this uses **`1.28r`**
+so the corners keep a margin. That constraint is what sets how large the moon
+has to be, not the other way round.
 
-The code's dark modules settle into planted green and grow the same tapered,
-curved blade the verge is planted with. Height and sway are both held down
-deliberately: grass overhanging its module would soften the very edges a
-scanner keys on, so it reads as turf without leaving the square it grows in.
+### The face is one image
 
-Each scene carries its own module colour rather than reusing the decorative
-grass palette — that palette is pale by design in some scenes and would have
-left nothing to read.
+Moonlight, latent maria and filled-in modules are painted into a single
+one-pixel-per-module bitmap and put down with one `drawImage`, clipped to the
+disc. Repainting `n²` pixels of `ImageData` each frame is cheaper than drawing
+hundreds of rectangles, and it keeps the code perfectly crisp with image
+smoothing off.
 
-### Limbs
+### Blossom
 
-Branches aren't strokes. Each is drawn three times across its own width — a
-shadowed base, the bark itself, and a narrow highlight offset toward the light —
-which is all it takes to read as a round branch. They taper toward the tip, and
-the trunk carries bark plates where there's width enough to see them.
+One blossom per dark module, plus blossom that carries no data so the bough
+looks laden rather than counted out — about 2,000 in total. Each is a five-petal
+sakura stamped from a precomputed unit polygon, so one costs ten multiply-adds.
+Broad petals with shallow notches; deep ones read as a star rather than sakura.
 
-Done as three passes over every limb rather than three fills per limb: a
-`fillStyle` assignment reparses the colour string, and doing that ~300 times a
-frame cost more than all the geometry put together.
+Two placement rules learned the hard way, both visible immediately when broken:
 
-### Leaves letting go
+- **Sites run the length of every limb**, not just its tip. Hanging blossom off
+  the nodes alone gives a row of discrete pom-poms.
+- **Spread stays small** — a fixed fraction of the viewport, not of the branch
+  length. Scaled to length, a depth-0 node threw blossom across a quarter of the
+  screen and the canopy detached from the bough entirely.
 
-A leaf detaches somewhere in the canopy, tumbles down, comes to rest on the
-stone and fades out; then another one goes. Continuous, and slow enough to
-notice without ever demanding attention. Resting leaves are drawn flat on the
-paving alongside the static scatter, and all of them clear as the code sharpens.
+Finder patterns settle first. They are what a scanner hunts for, and watching
+the three corners arrive ahead of everything else reads as intent.
 
-### Weather
-
-The weather field drifts across the viewport in two layers — one behind the
-scene, one in front — from a single pool sized for the heaviest of them, so
-changing season never reallocates.
-
-Leaves and petals tumble as they fall: width is scaled by `|cos(flip)|`, so each
-one pinches to an edge and swells open again as it turns over. That
-foreshortening is the whole trick; without it they read as drifting confetti.
-
-The two layers are not decoration alone. In the scan view the front layer fades
-out and only the back layer remains, drifting *behind* the card — so nothing
-ever floats across a symbol somebody is trying to scan.
-
-### The code is in the paving from the start
-
-The plaza is laid with the code before anything happens: every dark module is
-drawn into the stonework at about 13% of the way from paving to ink — legible if
-you look for it, easy to miss if you don't. Leaves landing don't *create* the
-pattern so much as finish it, painting each module up to full strength as they
-arrive.
-
-That is one extra row-batched pass over the modules that have yet to land;
-landed ones are painted over at full strength by the tops pass, so the finished
-code is unaffected.
-
-Leaves that came down earlier lie scattered on the stone, and clear away as the
-code sharpens — nothing is resting on it by the time you go to scan.
-
-### The code lies on the floor
-
-The reveal leaves the finished code where it was assembled — painted across the
-plaza, seen at an angle, with the season carrying on around it. The camera only
-lifts from 35° to about 54°: enough to read the whole plot, still plainly a
-floor you are looking across rather than a diagram.
-
-Two ramps run independently, which is what makes this work. `inkT` drives the
-plaza to white-on-black as the code forms, so it reads while the sky, weather
-and grass stay exactly as they were. The full bleach-out is reserved for the
-scan view.
-
-The paving checker fades out along that same ramp. It is texture, not data — if
-it stayed, every light module would finish a shade darker than the quiet zone
-around it, and that is contrast taken straight off what a scanner has to work
-with.
-
-**It scans as it lies.** All four seasons decode straight off the isometric
-plaza, so the angled view costs nothing.
-
-### The scan view
-
-The ⛶ button swings the camera overhead and lifts the code onto a floating white
-card — a slow bob, a slower sway, and a shadow that tightens as it sinks. The
-roll is capped at about **0.6°**: a bobbing code still scans, a tilting one
-starts to struggle, so the motion is nearly all translation.
-
-It is a deliberate second gear rather than where the reveal ends. Asking for it
-while the tree is still standing reveals the code first, so the button always
-does something sensible; dropping back to the tree puts the camera back on the
-plaza.
-
-### Leaves
-
-Every dark module of the code is a leaf. A short URL has only a few hundred, far
-too sparse for a canopy, so the surplus is **blossom that carries no data**: it
-hangs on the branches, and the gust tears it away and carries it out of frame
-while the encoding leaves stay behind and land. Chaff and signal, separating in
-front of you.
-
-The blossom count is chosen so a dense 25×25 canopy and a sparse 53×53 one both
-land at about 2,100 leaves, which keeps the look and the frame cost constant
-across URL lengths.
-
----
 
 ## Quick start
 
@@ -251,7 +174,7 @@ yozakura/
 │   ├── css/style.css
 │   └── js/
 │       ├── qr.js       QR Model 2 encoder, versions 1-40, ECC L/M/Q/H
-│       ├── scene.js    isometric renderer, tree growth, reveal choreography
+│       ├── moon.js     the moon, the bough, and the reveal choreography
 │       ├── audio.js    synthesised wind and chime (off by default)
 │       └── app.js      themes, controls, link encoding, redirect handling
 ├── dist/
@@ -269,71 +192,55 @@ Every phase boundary lives in one table at the top of `src/js/scene.js`:
 
 ```js
 const T = {
-  revealDuration: 2900,
-  regrowDuration: 2400,
-  gust:    [0.00, 0.18],  // wind ramps, canopy shivers
-  flight:  [0.06, 0.62],  // leaves detach and fly to their modules
-  sink:    [0.40, 0.58],  // trunk withdraws into the ground
-  tilt:    [0.52, 0.86],  // camera swings to straight-down
-  flatten: [0.62, 0.90],  // blocks collapse to paint
-  lock:    [0.86, 1.00]   // contrast snaps, scan-line sweeps
+  revealDuration: 2000,
+  regrowDuration: 1500,
+  gust:     [0.00, 0.16],   // the bough shivers, blossom begins to let go
+  flight:   [0.04, 0.62],   // blossom crosses to the moon and settles
+  withdraw: [0.34, 0.70],   // the emptied bough draws back off frame
+  ink:      [0.30, 0.88],   // the face brightens, the modules go dark
+  lock:     [0.80, 1.00]    // halo swells, a light sweeps the face
 };
 ```
 
-Numbers are fractions of the whole reveal, so phases can overlap freely. A few
-other knobs worth knowing:
+Numbers are fractions of the whole reveal, so phases can overlap freely. Other
+knobs worth knowing, all in `src/js/moon.js`:
 
-- **Landing order** — each leaf's `priority` in `_buildTree` decides when it
-  flies. Finder patterns are hard-coded to go first, since they're the anchors a
-  scanner hunts for and it reads as intent rather than randomness.
-- **Block height** — `blockH` in `draw()` is measured in *cell* units, not as a
-  fraction of the grid. That's deliberate: tie it to grid size and a 53-module
-  code grows blocks so tall their sides bury the light modules between them.
-- **Tree shape** — seeded from the QR's version and mask, so a given URL always
-  grows the same tree.
-- **Framing** — `_fit` deliberately frames only about two thirds of the crown.
-  The outer blossom bleeds off the sides, which fills the stage and reads as a
-  canopy you're standing under rather than a specimen on a plinth.
-- **Blossom volume** — `fillerCount` in `_buildTree`, currently tuned so any URL
-  lands near 3,600 leaves. The single biggest lever on how lush the tree looks,
-  and on frame cost.
-- **Crown shape** — foliage hangs off mid-branch nodes as well as the outermost
-  tips. Without those interior nodes the crown widens into a hollow ring.
-- **Weather** — `FALL` / `SWAY` / `SLANT` in `_updateAmbient` set how each kind
-  moves; `weather.count` per season sets how much of it there is.
-- **Latent code** — the `0.13` in the latent pass of `_drawGround` is how plainly
-  the code shows through the paving before the reveal.
-- **Foliage placement** — `sites` in `_buildTree` samples points along the whole
-  length of every branch, not just its tip, which is what makes the canopy look
-  grown rather than stuck on.
-- **The verge** — grass grows in tufts, not evenly, which is most of what makes
-  it read as planted rather than scattered. `tufts` and the per-tuft `count` in
-  `_buildGrass` control density; each blade is two quadratic curves meeting at
-  the tip so it tapers like a real one, and about one in eighteen carries a
-  wildflower drawn from the blossom palette.
-- **Camera drift** — the three sinusoids in `_cinematic`.
+- **Moon size and the inscribed square** — `_moon()`. The `1.28` multiplier is
+  the one number you cannot raise carelessly: past `1.41` the code's corners
+  leave the disc and the quiet zone is gone.
+- **Landing order** — each blossom's `priority` in `_buildBlossoms`. Finder
+  patterns are hard-coded to go first.
+- **Blossom volume** — the `2000` in `_buildBlossoms`, tuned so any URL lands
+  near the same total. The biggest lever on how laden the bough looks, and on
+  frame cost.
+- **Blossom placement** — `sites` samples along the length of every limb, and
+  `spread` is a fixed fraction of the viewport rather than of branch length.
+  Both matter; see the note above on what breaking either looks like.
+- **Bough shape** — seeded from the QR's version and mask, so a given URL always
+  grows the same branch. `entry` sets where it comes in from.
+- **How plainly the code shows before the reveal** — the `maria` tone per mood,
+  and the `1 - inkT * 0.15` blend in `draw()`.
 
 ## Notes on the rendering
 
-Everything is one 2D canvas. The camera is orthographic with a `pitch` that
-animates from isometric (35°) to straight-down (90°), which is what turns the
-skewed floor pattern into something a phone can actually read.
+Everything is one 2D canvas, drawn in screen space. There is no camera and no
+projection — see *No projection* above.
 
-The one non-obvious performance rule: **canvas rasterises a path in time that
-grows faster than the number of subpaths in it.** Batching the whole 53×53 floor
-into a single path was *12× slower* than one fill per tile; flushing a row at a
-time is 2.7× faster than either. Geometry is therefore flushed in chunks of
-roughly 48 subpaths throughout. Once the blocks collapse to paint, the floor is
-a two-colour bitmap drawn with a single transformed `drawImage`.
+The one non-obvious performance rule, carried over from the scene this replaced:
+**canvas rasterises a path in time that grows faster than the number of subpaths
+in it.** Batching a whole 53×53 grid into a single path measured *12× slower*
+than one fill per tile, while flushing a row at a time was 2.7× faster than
+either. Blossom is therefore stamped in chunks of about 40 subpaths, bucketed by
+colour and quantised alpha.
 
 Leaves are bucketed by colour *and* by quantised alpha, so a whole cloud of
 fading blossom costs a handful of fills. Each leaf is a four-point pointed oval
 — the same vertex count as the rectangle it replaced, but it reads as blossom
 instead of confetti and fills fewer pixels.
 
-Measured worst frame on Night — the heaviest scene, with stars, bloom and
-3,400 leaves — is **4.7 ms**, best-of-three after a long warm-up, with progress
-pinned each frame.
+Measured worst frame with the bough at full blossom — 2,000 sakura, the star
+field and the halo — is **5.4 ms**, best-of-three after a long warm-up, with
+progress pinned each frame.
 
 Two traps, both of which cost me real time:
 
@@ -424,7 +331,7 @@ Opening `/yozakura/` with no query lands in the **builder**: type a
 destination, pick a scene, copy your link.
 
 Opening one of those links lands in **visitor mode**: the builder is hidden
-entirely, the garden gets the whole screen, the code resolves on its own, and
+entirely, the scene gets the whole screen, the code resolves on its own, and
 the way onward is the only control — with *Make your own* tucked underneath for
 anyone curious enough to follow it back. That is the shape worth linking to
 from a projects section.

@@ -31,55 +31,45 @@
   const mix = global.Grove.mixHex;
 
   /* ------------------------------------------------------------- palettes */
-  /* Three scenes. Each owns its sky, its ground, its foliage and whatever is
-   * falling through it. The identifier stays `sky` throughout the code because
-   * that is what a scene really is — a sky plus what comes out of it.
+  /* Three moods, all of them night. Each owns its sky, the colour and
+   * temperature of the moon, and the blossom on the branch.
    *
-   * Foliage is the scene's first, with the accent swatch pulling it about a
-   * third of the way toward your pick. The accent owns the bloom, the
-   * wildflowers and the UI outright. */
+   * `maria` is the tone the code sits at before anything lands — the dark
+   * patches on the moon's face are the code, faint enough to miss and legible
+   * if you look. `moduleInk` is where those patches end up once the blossom
+   * has filled them in.
+   *
+   * Blossom is the mood's first; the accent swatch pulls it about a third of
+   * the way toward your pick and owns the UI outright. */
   const SKIES = [
-    { id: 'day', label: 'Day',
-      skyTop: '#4aa8e0', skyBottom: '#cfe9f4', sky: '#8ccdec',
-      paper: '#ffffff', stage: '#e8f3f9',
-      ground: '#e6dfc9', paving: '#ddd4bb', rim: '#bfb495',
-      ink: '#1d2118', bark: '#6b5236',
-      grass: ['#6fae4e', '#5c9a41', '#82c05f'],
-      moduleGreen: '#2f5d33', moduleBlade: '#4c8a4c',
-      leafShape: 'blossom',
-      leaf: ['#ffd5e2', '#ffe6ef', '#f7b9cd', '#fff2f6', '#e89ab4'],
-      weather: { kind: 'motes', count: 34 },
-      defaultAccent: 0, sun: 0.85, stars: 0, bloom: 0.18, vignette: 0.07 },
-
-    { id: 'night', label: 'Night',
-      skyTop: '#0c0819', skyBottom: '#241243', sky: '#150d2c',
-      paper: '#ffffff', stage: '#1b1236',
-      /* Moonlit stone. The plaza has to be the bright thing in a dark scene,
-       * or there is nothing to read the code against. */
-      ground: '#d9dcec', paving: '#c9cee2', rim: '#9aa1bd',
-      ink: '#2a3a52', bark: '#4a3a5e',
-      grass: ['#3d6b5c', '#4a7d69', '#5a8f79'],
-      moduleGreen: '#1d4438', moduleBlade: '#337a5d',
-      leafShape: 'blossom',
+    { id: 'hanami', label: 'Hanami',
+      skyTop: '#0a0616', skyBottom: '#231539', sky: '#150d2c',
+      paper: '#ffffff',
+      moonFace: '#f6efe2', moonLimb: '#c9b9a0', moonGlow: '#ffe9c4',
+      maria: '#cbbda6', moduleInk: '#241a2e',
+      branch: '#3b2a3d',
       leaf: ['#ff9ec2', '#ffc0d8', '#e87ba8', '#ffd6e6', '#c96690'],
-      /* Warm slow drifting specks read as fireflies under a blossom tree. */
-      weather: { kind: 'motes', count: 30 },
-      defaultAccent: 0, sun: 0, stars: 1.0, bloom: 0.52, vignette: 0.16 },
+      defaultAccent: 0, stars: 1.0, halo: 0.5, vignette: 0.3 },
 
-    { id: 'rainy', label: 'Rainy',
-      skyTop: '#47555f', skyBottom: '#98a9b4', sky: '#6d7e89',
-      paper: '#ffffff', stage: '#8b9aa4',
-      ground: '#cfd6d9', paving: '#c2cace', rim: '#94a0a6',
-      ink: '#23303a', bark: '#4a4038',
-      grass: ['#4f7a52', '#446b47', '#5d8a5f'],
-      moduleGreen: '#22422b', moduleBlade: '#3c7048',
-      leafShape: 'blossom',
-      leaf: ['#e9b7c8', '#f4cfda', '#d197ab', '#f8e0e7', '#b87d92'],
-      weather: { kind: 'rain', count: 130 },
-      /* Every blossom that lands leaves a wet mark before it goes. */
-      droplets: true,
-      defaultAccent: 0, sun: 0.0, stars: 0, bloom: 0.14, vignette: 0.20 }
+    { id: 'frost', label: 'Frost',
+      skyTop: '#05080f', skyBottom: '#16243a', sky: '#0d1526',
+      paper: '#ffffff',
+      moonFace: '#eef5fb', moonLimb: '#a8bccf', moonGlow: '#cfe6ff',
+      maria: '#b3c6d8', moduleInk: '#151f2c',
+      branch: '#2a3441',
+      leaf: ['#e8f2fb', '#ffffff', '#c6dcef', '#f6fbff', '#a9c6de'],
+      defaultAccent: 5, stars: 1.0, halo: 0.62, vignette: 0.26 },
+
+    { id: 'ember', label: 'Ember',
+      skyTop: '#12060e', skyBottom: '#3a1424', sky: '#240c18',
+      paper: '#ffffff',
+      moonFace: '#f7e3c0', moonLimb: '#c98f5e', moonGlow: '#ffbf7a',
+      maria: '#cfa478', moduleInk: '#2e1414',
+      branch: '#40232a',
+      leaf: ['#ff8a7a', '#ffb2a0', '#e2604f', '#ffd0c2', '#bf4436'],
+      defaultAccent: 1, stars: 0.7, halo: 0.72, vignette: 0.32 }
   ];
+
 
   /* Panel chrome, lifted straight from the site's tokens: --bg-alt for the
    * glass, --border for the hairlines, --text / --text-dim for type. Every sky
