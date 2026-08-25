@@ -146,11 +146,6 @@
       this.wind = 0;
       this.shockwave = -1;            // radius of the landing ripple, <0 = idle
       this.cineGain = 1;              // drops to 0 while the viewer drags
-      /* The reveal leaves the code lying on the plaza, seen at an angle. Going
-       * fully overhead is a separate, deliberate gear — that is the view a
-       * phone can actually read, so it is one tap away rather than automatic. */
-      this.scanFlat = 0;
-      this.scanTarget = 0;
       this._fadeCache = new Map();
 
       this._buildStars();
@@ -195,6 +190,7 @@
       this.ambientFront = make(80, true);
       this.ambCount = { back: 16, front: 20 };
       this.ripples = [];
+      this.droplets = [];
     }
 
     /* Motion per weather. Rain falls hard and straight, snow wanders, leaves
@@ -292,6 +288,11 @@
       } else if (this.ripples.length) {
         this.ripples.length = 0;
       }
+
+      for (let i = this.droplets.length - 1; i >= 0; i--) {
+        this.droplets[i].t += secs / 2.4;
+        if (this.droplets[i].t >= 1) this.droplets.splice(i, 1);
+      }
     }
 
     _drawAmbient(g, list, alpha, count) {
@@ -376,6 +377,28 @@
       g.globalAlpha = 1;
     }
 
+    /* Wet marks left where blossom has come down in the rain. */
+    _drawDroplets(g, P, alpha) {
+      if (!this.droplets.length || alpha <= 0.01) return;
+      g.fillStyle = '#2c3a42';
+      for (const d of this.droplets) {
+        /* Spreads a little as it soaks in, then dries off. */
+        const a = (1 - d.t) * 0.3 * alpha;
+        if (a < 0.02) continue;
+        const rad = d.r * (1 + d.t * 0.7);
+        const c = P(d.x, d.y, 0);
+        const e = P(d.x + rad, d.y, 0);
+        const f = P(d.x, d.y + rad, 0);
+        g.globalAlpha = a;
+        g.beginPath();
+        g.ellipse(c[0], c[1], Math.hypot(e[0] - c[0], e[1] - c[1]),
+                  Math.hypot(f[0] - c[0], f[1] - c[1]),
+                  Math.atan2(e[1] - c[1], e[0] - c[0]), 0, TAU);
+        g.fill();
+      }
+      g.globalAlpha = 1;
+    }
+
     /* Expanding rings where rain strikes the plaza. */
     _drawRipples(g, P, zoom, alpha) {
       if (!this.ripples.length || alpha <= 0.01) return;
@@ -439,15 +462,6 @@
     }
 
     get themeFading() { return this._themeT !== undefined && this._themeT < 1; }
-
-    /* Swing overhead for scanning, or back down onto the plaza. */
-    setScanView(on) {
-      this.scanTarget = on ? 1 : 0;
-      if (this.opts.onScanChange) this.opts.onScanChange(!!on);
-      this.start();
-    }
-
-    get scanView() { return this.scanTarget > 0.5; }
 
     /* Grow a branch skeleton, then hang one leaf per dark module on it. */
     _buildTree() {
@@ -760,9 +774,6 @@
 
       /* Hand the shot back to the viewer the moment they touch it, and take it
        * back gently a few seconds after they let go. */
-      this.scanFlat = lerp(this.scanFlat, this.scanTarget, 1 - Math.pow(0.0016, dt / 1000));
-      if (Math.abs(this.scanFlat - this.scanTarget) < 0.0015) this.scanFlat = this.scanTarget;
-
       this.cineGain = lerp(this.cineGain, this.cineHold ? 0 : 1, 1 - Math.pow(0.28, dt / 1000));
       this.userYaw = lerp(this.userYaw, this.userYawTarget, 1 - Math.pow(0.001, dt / 1000));
       this.parallax.x = lerp(this.parallax.x, this.parallax.tx, 1 - Math.pow(0.004, dt / 1000));
@@ -784,7 +795,14 @@
         m.x += (this.wind * 0.22 + Math.sin(shedNow * 1.2 + m.phase) * 0.45) * shedSecs;
         m.y += Math.cos(shedNow * 0.85 + m.phase) * 0.3 * shedSecs;
         m.spin += m.spinRate * shedSecs;
-        if (m.z <= 0) { m.z = 0; m.rest = 2.6; m.fade = 1; }
+        if (m.z <= 0) {
+          m.z = 0; m.rest = 2.6; m.fade = 1;
+          /* In the rain a blossom comes down wet, and leaves the mark of it
+           * on the stone for a moment after it has gone. */
+          if (this.theme && this.theme.droplets && this.droplets.length < 40) {
+            this.droplets.push({ x: m.x, y: m.y, t: 0, r: 0.22 + Math.random() * 0.2 });
+          }
+        }
       }
 
       if (!this.reducedMotion) this._updateAmbient(dt);
@@ -892,16 +910,19 @@
 
     _camera() {
       const p = this.progress;
-      /* The reveal only lifts the eye from 35° to about 54° — enough to read the
-       * whole plaza, still plainly a floor you are looking across. */
+      /* The garden sits isometric, where a tree has room to stand *in* its
+       * plot rather than in front of it. The reveal then rotates the plaza
+       * square-on and lifts the eye to straight down together, so the code
+       * lands as a centred square with no perspective left for a scanner to
+       * undo — the view that has to be square is the code's, not the garden's.
+       * Yaw runs 45° → 0° and never crosses zero, so the painter ordering the
+       * ground pass relies on stays valid the whole way. */
       const lift = smoothstep(span(p, T.tilt[0], T.tilt[1]));
       const cine = this._cinematic();
-      const flat = this.scanFlat;
-      const floorPitch = lerp(0.6155 + cine.pitch, 0.95, lift);
-      const pitch = lerp(floorPitch, Math.PI / 2, flat);
+      const pitch = lerp(0.6155 + cine.pitch, Math.PI / 2, lift);
       const yaw = lerp(Math.PI / 4 + this.userYaw + cine.yaw + this.parallax.x * 0.0016,
-                       Math.PI / 2, flat);
-      return { pitch, yaw, tilt: flat, lift, zoomScale: lerp(cine.zoom, 1, flat) };
+                       0, lift);
+      return { pitch, yaw, tilt: lift, lift, zoomScale: lerp(cine.zoom, 1, lift) };
     }
 
     _basis(cam, zoom) {
@@ -939,7 +960,7 @@
       /* The card needs more margin than the plot did — its shadow falls below
        * it, and a card pressed against the viewport edge stops reading as
        * something floating. */
-      const pad = 1.02 + 0.16 * this.scanFlat;
+      const pad = 1.02 + 0.16 * smoothstep(span(this.progress, T.tilt[0], T.tilt[1]));
       const zoom = Math.min(this.vw / ((maxX - minX) * pad), this.vh / ((maxY - minY) * pad));
       return {
         zoom,
@@ -959,14 +980,10 @@
 
       /* The sky is a two-stop gradient that washes out to paper as the code
        * takes over — atmosphere first, then pure contrast for the scanner. */
-      /* Two separate ramps. `inkT` drives the plaza to white-on-black as the
-       * code forms, so it reads while the season carries on around it; `wash`
-       * only bleaches the whole world once you ask for the scan view. */
-      const wash = this.scanFlat;
-      const lockT = wash;
-      const stage = th.stage || th.paper;
-      const skyTop = mixHex(th.skyTop, stage, wash);
-      const skyBottom = mixHex(th.skyBottom, stage, wash);
+      /* The scene keeps its own weather and light all the way through; only
+       * the plaza goes to white-on-green as the code forms. */
+      const skyTop = th.skyTop;
+      const skyBottom = th.skyBottom;
       if (skyTop === skyBottom) {
         g.fillStyle = skyTop;
       } else {
@@ -1015,17 +1032,16 @@
       const ink = mixHex(th.ink, th.moduleGreen || '#000000', inkT);
 
       /* Stars first, fading as the sky washes out toward the code. */
-      if (!this.reducedMotion) this._drawStars(g, (th.stars || 0) * (1 - lockT));
+      if (!this.reducedMotion) this._drawStars(g, th.stars || 0);
 
       /* Petals behind the scene. Once the code is flat these are the only ones
        * left, and they drift behind its card — nothing ever floats across a
        * symbol somebody is trying to scan. */
-      if (!this.reducedMotion) this._drawAmbient(g, this.ambientBack, 0.5 * (1 - lockT * 0.35), this.ambCount.back);
+      if (!this.reducedMotion) this._drawAmbient(g, this.ambientBack, 0.5, this.ambCount.back);
 
       /* ---- ground slab + quiet zone ---- */
       const quiet = this.opts.quietZone;
-      const onCard = this.scanFlat >= 0.999;
-      if (!onCard) {
+      {
         this._quad(g, P(-quiet, -quiet, 0), P(n + quiet, -quiet, 0), P(n + quiet, n + quiet, 0), P(-quiet, n + quiet, 0),
           mixHex(th.ground, '#ffffff', inkT));
       }
@@ -1033,11 +1049,13 @@
       /* The whole plot is a slab, not a decal: the two faces the camera can see
        * are drawn to their full depth so it sits in the world with weight. They
        * only go away in the overhead view, where there are no sides to see. */
-      if (!onCard) {
+      /* The slab's sides go as the eye lifts overhead — from straight down
+       * there are no sides to see. */
+      if (cam.lift < 0.995) {
         const lo = -quiet, hi = n + quiet, d = -0.9;
         const rimA = shade(th.rim, 0.12), rimB = shade(th.rim, -0.12);
-        this._quad(g, P(lo, hi, 0), P(hi, hi, 0), P(hi, hi, d), P(lo, hi, d), rimA, 1 - this.scanFlat);
-        this._quad(g, P(hi, lo, 0), P(hi, hi, 0), P(hi, hi, d), P(hi, lo, d), rimB, 1 - this.scanFlat);
+        this._quad(g, P(lo, hi, 0), P(hi, hi, 0), P(hi, hi, d), P(lo, hi, d), rimA, 1 - cam.lift);
+        this._quad(g, P(hi, lo, 0), P(hi, hi, 0), P(hi, hi, d), P(hi, lo, d), rimB, 1 - cam.lift);
       }
 
       /* ---- paving grid + risen modules ---- */
@@ -1045,7 +1063,7 @@
 
       /* Leaves lying on the paving, fading out as the code sharpens: the
        * static scatter, plus whatever has just come down and not yet gone. */
-      if (!onCard && inkT < 0.98 && this.fallen) {
+      if (inkT < 0.98 && this.fallen) {
         const resting = this.fallen.slice();
         for (const m of this.motes) {
           if (m.rest > 0) {
@@ -1084,7 +1102,10 @@
         g.globalAlpha = 1;
       }
 
-      if (!this.reducedMotion && !onCard) this._drawRipples(g, P, fit.zoom, 1 - lockT);
+      if (!this.reducedMotion) {
+        this._drawDroplets(g, P, 1 - inkT * 0.7);
+        this._drawRipples(g, P, fit.zoom, 1 - inkT * 0.6);
+      }
 
       /* ---- soft shadow of the canopy ---- */
       const canopyAlpha = 1 - smoothstep(span(p, T.flight[0], T.sink[1]));
@@ -1373,14 +1394,15 @@
         g.globalAlpha = 1;
       }
 
-      /* Petals in front, fading out as the code takes over the frame. */
-      if (!this.reducedMotion) this._drawAmbient(g, this.ambientFront, 0.85 * (1 - lockT), this.ambCount.front);
+      /* Petals in front fade as the code forms: nothing may drift across a
+       * symbol somebody is about to scan. The layer behind carries on. */
+      if (!this.reducedMotion) this._drawAmbient(g, this.ambientFront, 0.85 * (1 - inkT), this.ambCount.front);
 
       /* Vignette. It has to key off the code forming, not off the scan view:
        * left at full strength over the finished plaza it pulled white down to
        * about 204 and cost enough contrast to stop the code decoding outright.
        * The clear centre is widened for the same reason. */
-      const vig = (th.vignette || 0) * (1 - inkT * 0.75) * (1 - lockT);
+      const vig = (th.vignette || 0) * (1 - inkT * 0.75);
       if (vig > 0.005) {
         const r = Math.hypot(this.vw, this.vh) * 0.62;
         const shade2 = g.createRadialGradient(this.vw / 2, this.vh * 0.46, r * 0.55,
@@ -1394,7 +1416,7 @@
       /* A flare off the plaza as the code locks in — the beat the whole
        * sequence has been building to gets a bloom of its own. */
       const flare = Math.max(0, 1 - Math.abs(p - T.flatten[0]) / 0.18);
-      if (flare > 0.01 && !onCard) {
+      if (flare > 0.01) {
         const fc = P(n / 2, n / 2, 0);
         const rad = Math.max(this.vw, this.vh) * (0.35 + 0.55 * (1 - flare));
         const burst = g.createRadialGradient(fc[0], fc[1], 0, fc[0], fc[1], rad);
@@ -1431,12 +1453,6 @@
       this._updateLanded(p);
       const darkArr = this._dark, riseArr = this._rise, freshArr = this._fresh;
       const ex0 = b.ex[0], ex1 = b.ex[1], ey0 = b.ey[0], ey1 = b.ey[1];
-
-      /* --- scan view: the code lifts off the plaza onto a floating card --- */
-      if (this.scanFlat >= 0.999) {
-        this._drawFloatingCard(g, P, paving, ink);
-        return;
-      }
 
       const quad = (ax, ay, bx, by, cx, cy, dx, dy) => {
         g.moveTo(ax, ay); g.lineTo(bx, by); g.lineTo(cx, cy); g.lineTo(dx, dy); g.closePath();
@@ -1544,28 +1560,35 @@
        * cell — blades that overhang would blur the very edges a scanner keys
        * on. Flushed a row at a time, like everything else here. */
       if (inkT > 0.06 && th.moduleBlade) {
+        /* The same tapered, curved blade the verge is planted with, sized to a
+         * cell. Height and sway are both held down deliberately: grass that
+         * overhangs its module would soften the edges a scanner keys on, so
+         * this reads as turf without ever leaving the square it grows in. */
         g.fillStyle = th.moduleBlade;
         g.globalAlpha = Math.min(1, inkT * 1.25);
-        const H = 0.34 * inkT;
+        const H = 0.5 * inkT;
+        const cellPx = Math.hypot(ex0, ex1);
+        const wpx = Math.max(0.5, cellPx * 0.085);
+        const gust = Math.sin(performance.now() / 900) * 0.04 * this.wind;
         for (let gy = 0; gy < n; gy++) {
           g.beginPath();
           let any = false;
           for (let gx = 0; gx < n; gx++) {
             if (!darkArr[gy * n + gx]) continue;
             const hash = (Math.imul(gx + 1, 73856093) ^ Math.imul(gy + 1, 19349663)) >>> 0;
-            for (let b = 0; b < 3; b++) {
-              const r1 = ((hash >> (b * 7)) & 255) / 255;
-              const r2 = ((hash >> (b * 7 + 8)) & 255) / 255;
-              const bx = gx + 0.2 + r1 * 0.6;
-              const by = gy + 0.2 + r2 * 0.6;
-              const lean = (r1 - 0.5) * 0.24;
-              const w = 0.075;
-              const b1 = P(bx - w, by, 0);
-              const b2 = P(bx + w, by, 0);
-              const tip = P(bx + lean, by + lean * 0.5, H * (0.7 + r2 * 0.6));
-              g.moveTo(b1[0], b1[1]);
-              g.lineTo(tip[0], tip[1]);
-              g.lineTo(b2[0], b2[1]);
+            for (let b = 0; b < 4; b++) {
+              const r1 = ((hash >> (b * 6)) & 255) / 255;
+              const r2 = ((hash >> (b * 6 + 8)) & 255) / 255;
+              const bx = gx + 0.18 + r1 * 0.64;
+              const by = gy + 0.18 + r2 * 0.64;
+              const lean = (r1 - 0.5) * 0.3 + gust;
+              const h = H * (0.62 + r2 * 0.6);
+              const b0 = P(bx, by, 0);
+              const mid = P(bx + lean * 0.34, by + lean * 0.12, h * 0.6);
+              const tip = P(bx + lean, by + lean * 0.3, h);
+              g.moveTo(b0[0] - wpx, b0[1]);
+              g.quadraticCurveTo(mid[0] - wpx * 0.35, mid[1], tip[0], tip[1]);
+              g.quadraticCurveTo(mid[0] + wpx * 0.35, mid[1], b0[0] + wpx, b0[1]);
               g.closePath();
               any = true;
             }
@@ -1584,70 +1607,6 @@
              t[0] + ex0 + ey0, t[1] + ex1 + ey1, t[0] + ey0, t[1] + ey1);
         g.fill();
       }
-    }
-
-    /* The finished code, on a card that drifts as though it were hanging.
-     *
-     * Motion here is almost entirely translation, with only a fraction of a
-     * degree of roll: a bobbing code still scans, a tilting one starts to
-     * struggle. The card is drawn in screen space rather than through the
-     * world projection, so the shadow and the rounded corners can follow the
-     * bob directly. */
-    _drawFloatingCard(g, P, paving, ink) {
-      const n = this.n, quiet = this.opts.quietZone;
-      const t = performance.now() / 1000;
-      /* `settle` eases the float in over the final beat of the reveal, so the
-       * card does not lurch into motion the instant it goes flat. */
-      const settle = this.scanFlat;
-      const calm = this.reducedMotion ? 0 : settle;
-
-      const a = P(0, 0, 0), b1 = P(n, 0, 0), c = P(0, n, 0);
-      const cell = Math.max(Math.hypot(b1[0] - a[0], b1[1] - a[1]),
-                            Math.hypot(c[0] - a[0], c[1] - a[1])) / n;
-      const code = n * cell;
-      const card = (n + quiet * 2) * cell;
-      const cx = (a[0] + P(n, n, 0)[0]) / 2;
-      const cy = (a[1] + P(n, n, 0)[1]) / 2;
-
-      const bob = Math.sin(t * 0.62) * card * 0.022 * calm;
-      const sway = Math.sin(t * 0.41 + 0.9) * card * 0.012 * calm;
-      const roll = Math.sin(t * 0.33 + 2.1) * 0.011 * calm;      // ~0.6 degrees
-      const breathe = 1 + Math.sin(t * 0.52) * 0.006 * calm;
-      const lift = (bob + card * 0.022 * calm) / (card * 0.044 || 1); // 0..1
-
-      this._paintTexture(paving, ink);
-
-      /* Shadow tightens and darkens as the card sinks, opens up as it rises. */
-      if (calm > 0.01) {
-        const sr = card * (0.46 - 0.05 * lift);
-        g.save();
-        g.translate(cx + sway * 0.6, cy + card * 0.5 + card * 0.06);
-        g.scale(1, 0.16);
-        const sh = g.createRadialGradient(0, 0, sr * 0.1, 0, 0, sr);
-        const dark = 0.2 - 0.07 * lift;
-        sh.addColorStop(0, 'rgba(38,30,22,' + (dark * calm).toFixed(3) + ')');
-        sh.addColorStop(1, 'rgba(38,30,22,0)');
-        g.fillStyle = sh;
-        g.beginPath(); g.arc(0, 0, sr, 0, TAU); g.fill();
-        g.restore();
-      }
-
-      g.save();
-      g.translate(cx + sway, cy + bob);
-      g.rotate(roll);
-      g.scale(breathe, breathe);
-
-      const half = card / 2;
-      const radius = card * 0.045 * settle;
-      g.fillStyle = '#ffffff';
-      g.beginPath();
-      if (g.roundRect) g.roundRect(-half, -half, card, card, radius);
-      else g.rect(-half, -half, card, card);
-      g.fill();
-
-      g.imageSmoothingEnabled = false;
-      g.drawImage(this._tex, -code / 2, -code / 2, code, code);
-      g.restore();
     }
 
     /* A one-pixel-per-module image of the finished code. */

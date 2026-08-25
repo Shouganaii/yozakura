@@ -49,51 +49,51 @@ light/dark pair.
 
 ## The garden
 
-Five seasons, each owning its sky, its ground, its foliage and the weather
+Three scenes, each owning its sky, its ground, its foliage and whatever is
 falling through it:
 
-| | Sky | Weather |
+| | Sky | Falling |
 | --- | --- | --- |
-| Sunny | `#4aa8e0` → `#cfe9f4` | sun motes drifting |
-| Fall | `#e09a4c` → `#f8e3c2` | leaves tumbling down |
-| Rainy | `#47555f` → `#98a9b4` | rain streaks, ripples on the plaza |
-| Winter | `#8fabc4` → `#e2edf4` | snow, in still air |
+| Day | `#4aa8e0` → `#cfe9f4` | sun motes drifting |
 | Night | `#0c0819` → `#241243` | fireflies, stars, blossom lit from within |
+| Rainy | `#47555f` → `#98a9b4` | rain streaks, ripples, and a wet mark where each blossom lands |
 
-Night is appended rather than slotted in beside the others on purpose: the sky
-index is part of every share link, so inserting it mid-list would silently
-re-point codes that already exist.
+Rain falls hard and nearly straight, drawn as streaks rather than drops — a
+falling drop reads as a line at any shutter a screen can manage. In Rainy, a
+blossom that comes down leaves the mark of it on the stone for a moment after
+it has gone.
 
-Each weather has its own motion, not just its own sprite. Rain falls hard and
-nearly straight, drawn as streaks rather than drops — a falling drop reads as a
-line at any shutter a screen can manage — and dimples the plaza with expanding
-rings. Snow gets the gusts turned down to almost nothing and wanders instead.
-Leaves tumble edge-on. Sun motes barely move at all.
+Six accents pull the scene's foliage about a third of the way toward your pick.
+The accent owns the bloom, the wildflowers and the UI outright.
 
-Winter's tree is snow-laden rather than bare: every dark module of the code is
-a leaf, so the tree can never actually shed them all.
+### Where the code is square, and where it isn't
 
-Six accents sit on top, pulling the seasonal foliage a third of the way toward
-your pick — enough to see your choice in the canopy, not enough to turn autumn
-green. The accent owns the bloom, the wildflowers and the UI outright. **Let the
-seasons drift** walks them on a timer and moves the season on each full lap.
+The garden sits **isometric** — the plot renders as a diamond. The reveal then
+rotates the plaza square-on and lifts the eye to straight down together, so the
+code lands as a **centred, axis-aligned square** with no perspective left for a
+scanner to undo.
 
-That control is deliberately *display only*. In "through this page" mode the
-style is part of the encoded link, so a drifting colour would rewrite a code
-somebody has already printed — the cycle moves what you see and leaves the
-payload alone. Switching it off adopts whatever is on screen, which is what the
-button looks like it does.
+That split is deliberate, and it cost three attempts to learn. Viewing the plot
+head-on so its *floor* reads as a screen-square puts the camera at yaw 0, and
+there a tree centred on its own floor either drapes its canopy straight across
+the plot (low pitch) or collapses the floor to a thin band (high pitch). Every
+head-on variant looked worse than the isometric one: canopy chopped at the
+frame edge, then a crown split into two lobes above a stub of trunk. The view
+that has to be square is the code's, not the garden's.
 
-### The camera
+Yaw runs 45° → 0° and never crosses zero, so the painter ordering the ground
+pass relies on stays valid the whole way through.
 
-The shot is never quite still. A slow drift moves the yaw about ±9°, the pitch
-about ±3° and the zoom about ±4%, on three deliberately non-harmonic periods
-(41s, 57s, 34s) so the motion never visibly loops — the way an anime
-establishing shot keeps a frame alive without calling attention to itself.
+### Grass on the code
 
-It fades out as the code takes over, and it yields: touch the scene and the
-drift drops to nothing, then eases back about four seconds after you let go, so
-it never fights you for the camera.
+The code's dark modules settle into planted green and grow the same tapered,
+curved blade the verge is planted with. Height and sway are both held down
+deliberately: grass overhanging its module would soften the very edges a
+scanner keys on, so it reads as turf without leaving the square it grows in.
+
+Each scene carries its own module colour rather than reusing the decorative
+grass palette — that palette is pale by design in some scenes and would have
+left nothing to read.
 
 ### Limbs
 
@@ -331,13 +331,23 @@ fading blossom costs a handful of fills. Each leaf is a four-point pointed oval
 — the same vertex count as the rectangle it replaced, but it reads as blossom
 instead of confetti and fills fewer pixels.
 
-Measured worst frame on Night — the heaviest season, with stars, bloom and
-3,600 leaves — is **1.5 ms**, best-of-three after a long warm-up.
+Measured worst frame on Night — the heaviest scene, with stars, bloom and
+3,400 leaves — is **4.7 ms**, best-of-three after a long warm-up, with progress
+pinned each frame.
 
-Measure with warm-up and take the best of several runs. Cold samples in this
-scene run 4–10× slow and will send you chasing costs that aren't there; a
-"bloom is expensive" reading that disappears when you remove the vignette
-instead is warm-up drift, not attribution.
+Two traps, both of which cost me real time:
+
+- **Warm up first, then take the best of several runs.** Cold samples run
+  4–10× slow. A "bloom is expensive" reading that disappears when you remove
+  the *vignette* instead is drift, not attribution.
+- **Pin `progress` on every frame you time.** Leaving `state` as `'revealing'`
+  lets `update()` advance the reveal while you measure, so the run quietly
+  finishes and reports the cost of the settled state — about 0.1 ms — for
+  whatever progress you thought you were measuring.
+
+And if a number looks impossible, check `scene.canvas.width` before believing
+it. A collapsed preview pane silently resizes the canvas to 2×2, at which point
+nothing decodes and every timing is meaningless.
 
 **Load**: the webfont stylesheet is loaded without blocking first paint
 (`media="print"`, swapped on load). That alone took `DOMContentLoaded` from

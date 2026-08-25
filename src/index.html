@@ -15,7 +15,7 @@
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap"></noscript>
 <link rel="stylesheet" href="css/style.css">
 </head>
-<body data-sky="sunny">
+<body data-sky="day">
 
 <a class="brand" href="https://nextlvl.win" aria-label="Yozakura — back to nextlvl.win">
   <svg viewBox="0 0 34 34" aria-hidden="true" width="30" height="30">
@@ -33,9 +33,6 @@
           aria-label="Interactive tree. Activate to assemble the QR code."></canvas>
 
   <div class="stage-tools">
-    <button id="scan" class="tool" type="button" aria-pressed="false" aria-label="Overhead scan view" title="Overhead view for scanning">
-      <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15"/><path d="M4 12h16"/></g></svg>
-    </button>
     <button id="sound" class="tool" type="button" aria-pressed="false" aria-label="Toggle sound">
       <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h3.5L12 19V5L7.5 9z"/><path class="sound-on" d="M16 9.5a3.5 3.5 0 0 1 0 5M18.5 7a7 7 0 0 1 0 10"/><path class="sound-off" d="m16.5 10 5 4m0-4-5 4"/></g></svg>
     </button>
@@ -73,26 +70,18 @@
 
   <p id="status" class="status" role="status"></p>
 
-  <div class="row row-skies" role="group" aria-label="Season">
-    <button class="chip" type="button" data-sky="sunny" aria-pressed="true">
+  <div class="row row-skies" role="group" aria-label="Scene">
+    <button class="chip" type="button" data-sky="day" aria-pressed="true">
       <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2.5 12h2M19.5 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></g></svg>
-      Sunny
-    </button>
-    <button class="chip" type="button" data-sky="fall" aria-pressed="false">
-      <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 4C10 4 5 8.5 5 14a5 5 0 0 0 5 5c5.5 0 10-5 9-15z"/><path d="M14 9 6.5 17.5"/></g></svg>
-      Fall
-    </button>
-    <button class="chip" type="button" data-sky="rainy" aria-pressed="false">
-      <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 15.5a3.75 3.75 0 0 1 .4-7.48 5 5 0 0 1 9.45 1.2A3.4 3.4 0 0 1 16.5 15.5z"/><path d="M9 18.5 8 21M13 18.5 12 21M17 18.5 16 21"/></g></svg>
-      Rainy
-    </button>
-    <button class="chip" type="button" data-sky="winter" aria-pressed="false">
-      <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 2.5v19M3.6 7.25l16.8 9.5M20.4 7.25 3.6 16.75"/><path d="M12 6.6 9.6 4.2M12 6.6l2.4-2.4M12 17.4l-2.4 2.4M12 17.4l2.4 2.4"/></g></svg>
-      Winter
+      Day
     </button>
     <button class="chip" type="button" data-sky="night" aria-pressed="false">
       <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 14.6A8 8 0 0 1 9.4 4.5a8 8 0 1 0 10.1 10.1z"/></g></svg>
       Night
+    </button>
+    <button class="chip" type="button" data-sky="rainy" aria-pressed="false">
+      <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 15.5a3.75 3.75 0 0 1 .4-7.48 5 5 0 0 1 9.45 1.2A3.4 3.4 0 0 1 16.5 15.5z"/><path d="M9 18.5 8 21M13 18.5 12 21M17 18.5 16 21"/></g></svg>
+      Rainy
     </button>
   </div>
 

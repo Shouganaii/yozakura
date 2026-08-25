@@ -215,8 +215,8 @@ body {
 .row { display: flex; gap: 8px; align-items: flex-end; }
 .row-skies {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 6px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
 }
 .row-accents { flex-wrap: wrap; align-items: center; }
 .row-accents { gap: 10px; justify-content: center; padding-top: 2px; }

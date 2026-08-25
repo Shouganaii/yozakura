@@ -31,63 +31,25 @@
   const mix = global.Grove.mixHex;
 
   /* ------------------------------------------------------------- palettes */
-  /* Four seasons. Each owns its sky, its ground, its foliage and the weather
+  /* Three scenes. Each owns its sky, its ground, its foliage and whatever is
    * falling through it. The identifier stays `sky` throughout the code because
-   * that is what a preset really is — a sky plus what falls out of it.
+   * that is what a scene really is — a sky plus what comes out of it.
    *
-   * Foliage is seasonal first: the accent swatch tints it, but only by a third,
-   * so autumn stays autumn whichever colour you pick. The accent owns the bloom,
-   * the wildflowers and the UI outright. */
+   * Foliage is the scene's first, with the accent swatch pulling it about a
+   * third of the way toward your pick. The accent owns the bloom, the
+   * wildflowers and the UI outright. */
   const SKIES = [
-    { id: 'sunny', label: 'Sunny',
+    { id: 'day', label: 'Day',
       skyTop: '#4aa8e0', skyBottom: '#cfe9f4', sky: '#8ccdec',
       paper: '#ffffff', stage: '#e8f3f9',
       ground: '#e6dfc9', paving: '#ddd4bb', rim: '#bfb495',
       ink: '#1d2118', bark: '#6b5236',
       grass: ['#6fae4e', '#5c9a41', '#82c05f'],
-      leaf: ['#7cc24f', '#96d465', '#5da33b', '#a9e07c', '#4a8a30'],
-      moduleGreen: '#2f5d33', moduleBlade: '#477d47',
-      leafShape: 'leaf',
-      weather: { kind: 'motes', count: 34 },
-      defaultAccent: 4, sun: 0.85, stars: 0, bloom: 0.16, vignette: 0.07 },
-
-    { id: 'fall', label: 'Fall',
-      skyTop: '#e09a4c', skyBottom: '#f8e3c2', sky: '#efc389',
-      paper: '#ffffff', stage: '#f2e2c8',
-      ground: '#e4d2ac', paving: '#d8c69e', rim: '#b8a179',
-      ink: '#241a10', bark: '#5f4227',
-      grass: ['#b09a53', '#9c8646', '#c2ad66'],
-      leaf: ['#e0703a', '#f0954e', '#c44f2c', '#f5b567', '#9c3a22'],
-      moduleGreen: '#4a4a22', moduleBlade: '#6b6733',
-      leafShape: 'leaf',
-      weather: { kind: 'leaves', count: 46 },
-      defaultAccent: 4, sun: 0.45, stars: 0, bloom: 0.30, vignette: 0.15 },
-
-    { id: 'rainy', label: 'Rainy',
-      skyTop: '#47555f', skyBottom: '#98a9b4', sky: '#6d7e89',
-      paper: '#ffffff', stage: '#8b9aa4',
-      ground: '#6f7d84', paving: '#7d8b92', rim: '#55636a',
-      ink: '#14191c', bark: '#4a4038',
-      grass: ['#4f7a52', '#446b47', '#5d8a5f'],
-      leaf: ['#4e8a55', '#5f9c64', '#3f7245', '#74ad78', '#2f5c36'],
-      moduleGreen: '#22422b', moduleBlade: '#356343',
-      leafShape: 'leaf',
-      weather: { kind: 'rain', count: 130 },
-      defaultAccent: 3, sun: 0.0, stars: 0, bloom: 0.12, vignette: 0.22 },
-
-    { id: 'winter', label: 'Winter',
-      skyTop: '#8fabc4', skyBottom: '#e2edf4', sky: '#b4c8d9',
-      paper: '#ffffff', stage: '#dde9f1',
-      ground: '#d6e0e8', paving: '#e4ecf2', rim: '#b3c2ce',
-      ink: '#171c22', bark: '#57493f',
-      grass: ['#9fb3bf', '#8ea3b0', '#b4c5cf'],
-      /* Snow-laden branches rather than bare ones — every dark module of the
-       * code is a leaf, so the tree can never actually shed them all. */
-      leaf: ['#eef5fb', '#ffffff', '#cfdeea', '#f7fbfe', '#b9cfe0'],
-      moduleGreen: '#2b4a48', moduleBlade: '#3f6a64',
+      moduleGreen: '#2f5d33', moduleBlade: '#4c8a4c',
       leafShape: 'blossom',
-      weather: { kind: 'snow', count: 96 },
-      defaultAccent: 5, sun: 0.25, stars: 0, bloom: 0.22, vignette: 0.10 },
+      leaf: ['#ffd5e2', '#ffe6ef', '#f7b9cd', '#fff2f6', '#e89ab4'],
+      weather: { kind: 'motes', count: 34 },
+      defaultAccent: 0, sun: 0.85, stars: 0, bloom: 0.18, vignette: 0.07 },
 
     { id: 'night', label: 'Night',
       skyTop: '#0c0819', skyBottom: '#241243', sky: '#150d2c',
@@ -97,12 +59,26 @@
       ground: '#d9dcec', paving: '#c9cee2', rim: '#9aa1bd',
       ink: '#2a3a52', bark: '#4a3a5e',
       grass: ['#3d6b5c', '#4a7d69', '#5a8f79'],
-      moduleGreen: '#1d4438', moduleBlade: '#2f6b53',
-      leaf: ['#ff9ec2', '#ffc0d8', '#e87ba8', '#ffd6e6', '#c96690'],
+      moduleGreen: '#1d4438', moduleBlade: '#337a5d',
       leafShape: 'blossom',
+      leaf: ['#ff9ec2', '#ffc0d8', '#e87ba8', '#ffd6e6', '#c96690'],
       /* Warm slow drifting specks read as fireflies under a blossom tree. */
       weather: { kind: 'motes', count: 30 },
-      defaultAccent: 0, sun: 0, stars: 1.0, bloom: 0.52, vignette: 0.16 }
+      defaultAccent: 0, sun: 0, stars: 1.0, bloom: 0.52, vignette: 0.16 },
+
+    { id: 'rainy', label: 'Rainy',
+      skyTop: '#47555f', skyBottom: '#98a9b4', sky: '#6d7e89',
+      paper: '#ffffff', stage: '#8b9aa4',
+      ground: '#cfd6d9', paving: '#c2cace', rim: '#94a0a6',
+      ink: '#23303a', bark: '#4a4038',
+      grass: ['#4f7a52', '#446b47', '#5d8a5f'],
+      moduleGreen: '#22422b', moduleBlade: '#3c7048',
+      leafShape: 'blossom',
+      leaf: ['#e9b7c8', '#f4cfda', '#d197ab', '#f8e0e7', '#b87d92'],
+      weather: { kind: 'rain', count: 130 },
+      /* Every blossom that lands leaves a wet mark before it goes. */
+      droplets: true,
+      defaultAccent: 0, sun: 0.0, stars: 0, bloom: 0.14, vignette: 0.20 }
   ];
 
   /* Panel chrome, lifted straight from the site's tokens: --bg-alt for the
@@ -348,7 +324,6 @@
   function onStateChange(s) {
     els.hint.textContent = BRAND.prompts[s] || BRAND.prompts.grown;
     els.stage.dataset.state = s;
-    if ((s === 'regrowing' || s === 'grown') && scene && scene.scanView) scene.setScanView(false);
 
     if (s === 'revealed') {
       if (global.GroveAudio && state.sound) global.GroveAudio.chime();
@@ -378,21 +353,6 @@
       redirectTimer = setTimeout(tick, 1000);
     };
     tick();
-  }
-
-  /* The overhead view is what a phone can read; the plaza view is what the
-   * scene is for. Asking for one while the tree is still up reveals it first,
-   * so the button always does something sensible. */
-  function onScanChange(on) {
-    const btn = $('#scan');
-    if (btn) btn.setAttribute('aria-pressed', String(!!on));
-    if (els.stage) els.stage.dataset.scan = on ? 'true' : 'false';
-  }
-
-  function toggleScan() {
-    const want = !scene.scanView;
-    if (want && scene.state !== 'revealed' && scene.state !== 'revealing') scene.reveal();
-    scene.setScanView(want);
   }
 
   function cancelRedirect() {
@@ -511,7 +471,7 @@
     els.skies = Array.from(document.querySelectorAll('button[data-sky]'));
     els.accents = Array.from(document.querySelectorAll('button[data-accent]'));
 
-    scene = new global.Grove.Scene(els.canvas, { onStateChange, onScanChange });
+    scene = new global.Grove.Scene(els.canvas, { onStateChange });
 
     /* `?q=` means a visitor scanned a code; `#q=` is our own session restore. */
     const params = new URLSearchParams(location.search);
@@ -591,7 +551,6 @@
     });
 
     $('#reveal').addEventListener('click', () => scene.toggle());
-    $('#scan').addEventListener('click', toggleScan);
     $('#poster-open').addEventListener('click', openPoster);
     $('#copy-share').addEventListener('click', (e) => copy(shareLink(), e.currentTarget));
     els.poster.querySelector('.poster-close').addEventListener('click', () => { els.poster.hidden = true; });

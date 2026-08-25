@@ -231,8 +231,8 @@ body {
 .row { display: flex; gap: 8px; align-items: flex-end; }
 .row-skies {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 6px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
 }
 .row-accents { flex-wrap: wrap; align-items: center; }
 .row-accents { gap: 10px; justify-content: center; padding-top: 2px; }
@@ -557,7 +557,7 @@ select {
 
 </style>
 </head>
-<body data-sky="sunny">
+<body data-sky="day">
 
 <a class="brand" href="https://nextlvl.win" aria-label="Yozakura — back to nextlvl.win">
   <svg viewBox="0 0 34 34" aria-hidden="true" width="30" height="30">
@@ -575,9 +575,6 @@ select {
           aria-label="Interactive tree. Activate to assemble the QR code."></canvas>
 
   <div class="stage-tools">
-    <button id="scan" class="tool" type="button" aria-pressed="false" aria-label="Overhead scan view" title="Overhead view for scanning">
-      <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15"/><path d="M4 12h16"/></g></svg>
-    </button>
     <button id="sound" class="tool" type="button" aria-pressed="false" aria-label="Toggle sound">
       <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h3.5L12 19V5L7.5 9z"/><path class="sound-on" d="M16 9.5a3.5 3.5 0 0 1 0 5M18.5 7a7 7 0 0 1 0 10"/><path class="sound-off" d="m16.5 10 5 4m0-4-5 4"/></g></svg>
     </button>
@@ -615,26 +612,18 @@ select {
 
   <p id="status" class="status" role="status"></p>
 
-  <div class="row row-skies" role="group" aria-label="Season">
-    <button class="chip" type="button" data-sky="sunny" aria-pressed="true">
+  <div class="row row-skies" role="group" aria-label="Scene">
+    <button class="chip" type="button" data-sky="day" aria-pressed="true">
       <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2.5 12h2M19.5 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></g></svg>
-      Sunny
-    </button>
-    <button class="chip" type="button" data-sky="fall" aria-pressed="false">
-      <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 4C10 4 5 8.5 5 14a5 5 0 0 0 5 5c5.5 0 10-5 9-15z"/><path d="M14 9 6.5 17.5"/></g></svg>
-      Fall
-    </button>
-    <button class="chip" type="button" data-sky="rainy" aria-pressed="false">
-      <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 15.5a3.75 3.75 0 0 1 .4-7.48 5 5 0 0 1 9.45 1.2A3.4 3.4 0 0 1 16.5 15.5z"/><path d="M9 18.5 8 21M13 18.5 12 21M17 18.5 16 21"/></g></svg>
-      Rainy
-    </button>
-    <button class="chip" type="button" data-sky="winter" aria-pressed="false">
-      <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 2.5v19M3.6 7.25l16.8 9.5M20.4 7.25 3.6 16.75"/><path d="M12 6.6 9.6 4.2M12 6.6l2.4-2.4M12 17.4l-2.4 2.4M12 17.4l2.4 2.4"/></g></svg>
-      Winter
+      Day
     </button>
     <button class="chip" type="button" data-sky="night" aria-pressed="false">
       <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 14.6A8 8 0 0 1 9.4 4.5a8 8 0 1 0 10.1 10.1z"/></g></svg>
       Night
+    </button>
+    <button class="chip" type="button" data-sky="rainy" aria-pressed="false">
+      <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 15.5a3.75 3.75 0 0 1 .4-7.48 5 5 0 0 1 9.45 1.2A3.4 3.4 0 0 1 16.5 15.5z"/><path d="M9 18.5 8 21M13 18.5 12 21M17 18.5 16 21"/></g></svg>
+      Rainy
     </button>
   </div>
 
@@ -1401,11 +1390,6 @@ select {
       this.wind = 0;
       this.shockwave = -1;            // radius of the landing ripple, <0 = idle
       this.cineGain = 1;              // drops to 0 while the viewer drags
-      /* The reveal leaves the code lying on the plaza, seen at an angle. Going
-       * fully overhead is a separate, deliberate gear — that is the view a
-       * phone can actually read, so it is one tap away rather than automatic. */
-      this.scanFlat = 0;
-      this.scanTarget = 0;
       this._fadeCache = new Map();
 
       this._buildStars();
@@ -1450,6 +1434,7 @@ select {
       this.ambientFront = make(80, true);
       this.ambCount = { back: 16, front: 20 };
       this.ripples = [];
+      this.droplets = [];
     }
 
     /* Motion per weather. Rain falls hard and straight, snow wanders, leaves
@@ -1547,6 +1532,11 @@ select {
       } else if (this.ripples.length) {
         this.ripples.length = 0;
       }
+
+      for (let i = this.droplets.length - 1; i >= 0; i--) {
+        this.droplets[i].t += secs / 2.4;
+        if (this.droplets[i].t >= 1) this.droplets.splice(i, 1);
+      }
     }
 
     _drawAmbient(g, list, alpha, count) {
@@ -1631,6 +1621,28 @@ select {
       g.globalAlpha = 1;
     }
 
+    /* Wet marks left where blossom has come down in the rain. */
+    _drawDroplets(g, P, alpha) {
+      if (!this.droplets.length || alpha <= 0.01) return;
+      g.fillStyle = '#2c3a42';
+      for (const d of this.droplets) {
+        /* Spreads a little as it soaks in, then dries off. */
+        const a = (1 - d.t) * 0.3 * alpha;
+        if (a < 0.02) continue;
+        const rad = d.r * (1 + d.t * 0.7);
+        const c = P(d.x, d.y, 0);
+        const e = P(d.x + rad, d.y, 0);
+        const f = P(d.x, d.y + rad, 0);
+        g.globalAlpha = a;
+        g.beginPath();
+        g.ellipse(c[0], c[1], Math.hypot(e[0] - c[0], e[1] - c[1]),
+                  Math.hypot(f[0] - c[0], f[1] - c[1]),
+                  Math.atan2(e[1] - c[1], e[0] - c[0]), 0, TAU);
+        g.fill();
+      }
+      g.globalAlpha = 1;
+    }
+
     /* Expanding rings where rain strikes the plaza. */
     _drawRipples(g, P, zoom, alpha) {
       if (!this.ripples.length || alpha <= 0.01) return;
@@ -1694,15 +1706,6 @@ select {
     }
 
     get themeFading() { return this._themeT !== undefined && this._themeT < 1; }
-
-    /* Swing overhead for scanning, or back down onto the plaza. */
-    setScanView(on) {
-      this.scanTarget = on ? 1 : 0;
-      if (this.opts.onScanChange) this.opts.onScanChange(!!on);
-      this.start();
-    }
-
-    get scanView() { return this.scanTarget > 0.5; }
 
     /* Grow a branch skeleton, then hang one leaf per dark module on it. */
     _buildTree() {
@@ -2015,9 +2018,6 @@ select {
 
       /* Hand the shot back to the viewer the moment they touch it, and take it
        * back gently a few seconds after they let go. */
-      this.scanFlat = lerp(this.scanFlat, this.scanTarget, 1 - Math.pow(0.0016, dt / 1000));
-      if (Math.abs(this.scanFlat - this.scanTarget) < 0.0015) this.scanFlat = this.scanTarget;
-
       this.cineGain = lerp(this.cineGain, this.cineHold ? 0 : 1, 1 - Math.pow(0.28, dt / 1000));
       this.userYaw = lerp(this.userYaw, this.userYawTarget, 1 - Math.pow(0.001, dt / 1000));
       this.parallax.x = lerp(this.parallax.x, this.parallax.tx, 1 - Math.pow(0.004, dt / 1000));
@@ -2039,7 +2039,14 @@ select {
         m.x += (this.wind * 0.22 + Math.sin(shedNow * 1.2 + m.phase) * 0.45) * shedSecs;
         m.y += Math.cos(shedNow * 0.85 + m.phase) * 0.3 * shedSecs;
         m.spin += m.spinRate * shedSecs;
-        if (m.z <= 0) { m.z = 0; m.rest = 2.6; m.fade = 1; }
+        if (m.z <= 0) {
+          m.z = 0; m.rest = 2.6; m.fade = 1;
+          /* In the rain a blossom comes down wet, and leaves the mark of it
+           * on the stone for a moment after it has gone. */
+          if (this.theme && this.theme.droplets && this.droplets.length < 40) {
+            this.droplets.push({ x: m.x, y: m.y, t: 0, r: 0.22 + Math.random() * 0.2 });
+          }
+        }
       }
 
       if (!this.reducedMotion) this._updateAmbient(dt);
@@ -2147,16 +2154,19 @@ select {
 
     _camera() {
       const p = this.progress;
-      /* The reveal only lifts the eye from 35° to about 54° — enough to read the
-       * whole plaza, still plainly a floor you are looking across. */
+      /* The garden sits isometric, where a tree has room to stand *in* its
+       * plot rather than in front of it. The reveal then rotates the plaza
+       * square-on and lifts the eye to straight down together, so the code
+       * lands as a centred square with no perspective left for a scanner to
+       * undo — the view that has to be square is the code's, not the garden's.
+       * Yaw runs 45° → 0° and never crosses zero, so the painter ordering the
+       * ground pass relies on stays valid the whole way. */
       const lift = smoothstep(span(p, T.tilt[0], T.tilt[1]));
       const cine = this._cinematic();
-      const flat = this.scanFlat;
-      const floorPitch = lerp(0.6155 + cine.pitch, 0.95, lift);
-      const pitch = lerp(floorPitch, Math.PI / 2, flat);
+      const pitch = lerp(0.6155 + cine.pitch, Math.PI / 2, lift);
       const yaw = lerp(Math.PI / 4 + this.userYaw + cine.yaw + this.parallax.x * 0.0016,
-                       Math.PI / 2, flat);
-      return { pitch, yaw, tilt: flat, lift, zoomScale: lerp(cine.zoom, 1, flat) };
+                       0, lift);
+      return { pitch, yaw, tilt: lift, lift, zoomScale: lerp(cine.zoom, 1, lift) };
     }
 
     _basis(cam, zoom) {
@@ -2194,7 +2204,7 @@ select {
       /* The card needs more margin than the plot did — its shadow falls below
        * it, and a card pressed against the viewport edge stops reading as
        * something floating. */
-      const pad = 1.02 + 0.16 * this.scanFlat;
+      const pad = 1.02 + 0.16 * smoothstep(span(this.progress, T.tilt[0], T.tilt[1]));
       const zoom = Math.min(this.vw / ((maxX - minX) * pad), this.vh / ((maxY - minY) * pad));
       return {
         zoom,
@@ -2214,14 +2224,10 @@ select {
 
       /* The sky is a two-stop gradient that washes out to paper as the code
        * takes over — atmosphere first, then pure contrast for the scanner. */
-      /* Two separate ramps. `inkT` drives the plaza to white-on-black as the
-       * code forms, so it reads while the season carries on around it; `wash`
-       * only bleaches the whole world once you ask for the scan view. */
-      const wash = this.scanFlat;
-      const lockT = wash;
-      const stage = th.stage || th.paper;
-      const skyTop = mixHex(th.skyTop, stage, wash);
-      const skyBottom = mixHex(th.skyBottom, stage, wash);
+      /* The scene keeps its own weather and light all the way through; only
+       * the plaza goes to white-on-green as the code forms. */
+      const skyTop = th.skyTop;
+      const skyBottom = th.skyBottom;
       if (skyTop === skyBottom) {
         g.fillStyle = skyTop;
       } else {
@@ -2270,17 +2276,16 @@ select {
       const ink = mixHex(th.ink, th.moduleGreen || '#000000', inkT);
 
       /* Stars first, fading as the sky washes out toward the code. */
-      if (!this.reducedMotion) this._drawStars(g, (th.stars || 0) * (1 - lockT));
+      if (!this.reducedMotion) this._drawStars(g, th.stars || 0);
 
       /* Petals behind the scene. Once the code is flat these are the only ones
        * left, and they drift behind its card — nothing ever floats across a
        * symbol somebody is trying to scan. */
-      if (!this.reducedMotion) this._drawAmbient(g, this.ambientBack, 0.5 * (1 - lockT * 0.35), this.ambCount.back);
+      if (!this.reducedMotion) this._drawAmbient(g, this.ambientBack, 0.5, this.ambCount.back);
 
       /* ---- ground slab + quiet zone ---- */
       const quiet = this.opts.quietZone;
-      const onCard = this.scanFlat >= 0.999;
-      if (!onCard) {
+      {
         this._quad(g, P(-quiet, -quiet, 0), P(n + quiet, -quiet, 0), P(n + quiet, n + quiet, 0), P(-quiet, n + quiet, 0),
           mixHex(th.ground, '#ffffff', inkT));
       }
@@ -2288,11 +2293,13 @@ select {
       /* The whole plot is a slab, not a decal: the two faces the camera can see
        * are drawn to their full depth so it sits in the world with weight. They
        * only go away in the overhead view, where there are no sides to see. */
-      if (!onCard) {
+      /* The slab's sides go as the eye lifts overhead — from straight down
+       * there are no sides to see. */
+      if (cam.lift < 0.995) {
         const lo = -quiet, hi = n + quiet, d = -0.9;
         const rimA = shade(th.rim, 0.12), rimB = shade(th.rim, -0.12);
-        this._quad(g, P(lo, hi, 0), P(hi, hi, 0), P(hi, hi, d), P(lo, hi, d), rimA, 1 - this.scanFlat);
-        this._quad(g, P(hi, lo, 0), P(hi, hi, 0), P(hi, hi, d), P(hi, lo, d), rimB, 1 - this.scanFlat);
+        this._quad(g, P(lo, hi, 0), P(hi, hi, 0), P(hi, hi, d), P(lo, hi, d), rimA, 1 - cam.lift);
+        this._quad(g, P(hi, lo, 0), P(hi, hi, 0), P(hi, hi, d), P(hi, lo, d), rimB, 1 - cam.lift);
       }
 
       /* ---- paving grid + risen modules ---- */
@@ -2300,7 +2307,7 @@ select {
 
       /* Leaves lying on the paving, fading out as the code sharpens: the
        * static scatter, plus whatever has just come down and not yet gone. */
-      if (!onCard && inkT < 0.98 && this.fallen) {
+      if (inkT < 0.98 && this.fallen) {
         const resting = this.fallen.slice();
         for (const m of this.motes) {
           if (m.rest > 0) {
@@ -2339,7 +2346,10 @@ select {
         g.globalAlpha = 1;
       }
 
-      if (!this.reducedMotion && !onCard) this._drawRipples(g, P, fit.zoom, 1 - lockT);
+      if (!this.reducedMotion) {
+        this._drawDroplets(g, P, 1 - inkT * 0.7);
+        this._drawRipples(g, P, fit.zoom, 1 - inkT * 0.6);
+      }
 
       /* ---- soft shadow of the canopy ---- */
       const canopyAlpha = 1 - smoothstep(span(p, T.flight[0], T.sink[1]));
@@ -2628,14 +2638,15 @@ select {
         g.globalAlpha = 1;
       }
 
-      /* Petals in front, fading out as the code takes over the frame. */
-      if (!this.reducedMotion) this._drawAmbient(g, this.ambientFront, 0.85 * (1 - lockT), this.ambCount.front);
+      /* Petals in front fade as the code forms: nothing may drift across a
+       * symbol somebody is about to scan. The layer behind carries on. */
+      if (!this.reducedMotion) this._drawAmbient(g, this.ambientFront, 0.85 * (1 - inkT), this.ambCount.front);
 
       /* Vignette. It has to key off the code forming, not off the scan view:
        * left at full strength over the finished plaza it pulled white down to
        * about 204 and cost enough contrast to stop the code decoding outright.
        * The clear centre is widened for the same reason. */
-      const vig = (th.vignette || 0) * (1 - inkT * 0.75) * (1 - lockT);
+      const vig = (th.vignette || 0) * (1 - inkT * 0.75);
       if (vig > 0.005) {
         const r = Math.hypot(this.vw, this.vh) * 0.62;
         const shade2 = g.createRadialGradient(this.vw / 2, this.vh * 0.46, r * 0.55,
@@ -2649,7 +2660,7 @@ select {
       /* A flare off the plaza as the code locks in — the beat the whole
        * sequence has been building to gets a bloom of its own. */
       const flare = Math.max(0, 1 - Math.abs(p - T.flatten[0]) / 0.18);
-      if (flare > 0.01 && !onCard) {
+      if (flare > 0.01) {
         const fc = P(n / 2, n / 2, 0);
         const rad = Math.max(this.vw, this.vh) * (0.35 + 0.55 * (1 - flare));
         const burst = g.createRadialGradient(fc[0], fc[1], 0, fc[0], fc[1], rad);
@@ -2686,12 +2697,6 @@ select {
       this._updateLanded(p);
       const darkArr = this._dark, riseArr = this._rise, freshArr = this._fresh;
       const ex0 = b.ex[0], ex1 = b.ex[1], ey0 = b.ey[0], ey1 = b.ey[1];
-
-      /* --- scan view: the code lifts off the plaza onto a floating card --- */
-      if (this.scanFlat >= 0.999) {
-        this._drawFloatingCard(g, P, paving, ink);
-        return;
-      }
 
       const quad = (ax, ay, bx, by, cx, cy, dx, dy) => {
         g.moveTo(ax, ay); g.lineTo(bx, by); g.lineTo(cx, cy); g.lineTo(dx, dy); g.closePath();
@@ -2799,28 +2804,35 @@ select {
        * cell — blades that overhang would blur the very edges a scanner keys
        * on. Flushed a row at a time, like everything else here. */
       if (inkT > 0.06 && th.moduleBlade) {
+        /* The same tapered, curved blade the verge is planted with, sized to a
+         * cell. Height and sway are both held down deliberately: grass that
+         * overhangs its module would soften the edges a scanner keys on, so
+         * this reads as turf without ever leaving the square it grows in. */
         g.fillStyle = th.moduleBlade;
         g.globalAlpha = Math.min(1, inkT * 1.25);
-        const H = 0.34 * inkT;
+        const H = 0.5 * inkT;
+        const cellPx = Math.hypot(ex0, ex1);
+        const wpx = Math.max(0.5, cellPx * 0.085);
+        const gust = Math.sin(performance.now() / 900) * 0.04 * this.wind;
         for (let gy = 0; gy < n; gy++) {
           g.beginPath();
           let any = false;
           for (let gx = 0; gx < n; gx++) {
             if (!darkArr[gy * n + gx]) continue;
             const hash = (Math.imul(gx + 1, 73856093) ^ Math.imul(gy + 1, 19349663)) >>> 0;
-            for (let b = 0; b < 3; b++) {
-              const r1 = ((hash >> (b * 7)) & 255) / 255;
-              const r2 = ((hash >> (b * 7 + 8)) & 255) / 255;
-              const bx = gx + 0.2 + r1 * 0.6;
-              const by = gy + 0.2 + r2 * 0.6;
-              const lean = (r1 - 0.5) * 0.24;
-              const w = 0.075;
-              const b1 = P(bx - w, by, 0);
-              const b2 = P(bx + w, by, 0);
-              const tip = P(bx + lean, by + lean * 0.5, H * (0.7 + r2 * 0.6));
-              g.moveTo(b1[0], b1[1]);
-              g.lineTo(tip[0], tip[1]);
-              g.lineTo(b2[0], b2[1]);
+            for (let b = 0; b < 4; b++) {
+              const r1 = ((hash >> (b * 6)) & 255) / 255;
+              const r2 = ((hash >> (b * 6 + 8)) & 255) / 255;
+              const bx = gx + 0.18 + r1 * 0.64;
+              const by = gy + 0.18 + r2 * 0.64;
+              const lean = (r1 - 0.5) * 0.3 + gust;
+              const h = H * (0.62 + r2 * 0.6);
+              const b0 = P(bx, by, 0);
+              const mid = P(bx + lean * 0.34, by + lean * 0.12, h * 0.6);
+              const tip = P(bx + lean, by + lean * 0.3, h);
+              g.moveTo(b0[0] - wpx, b0[1]);
+              g.quadraticCurveTo(mid[0] - wpx * 0.35, mid[1], tip[0], tip[1]);
+              g.quadraticCurveTo(mid[0] + wpx * 0.35, mid[1], b0[0] + wpx, b0[1]);
               g.closePath();
               any = true;
             }
@@ -2839,70 +2851,6 @@ select {
              t[0] + ex0 + ey0, t[1] + ex1 + ey1, t[0] + ey0, t[1] + ey1);
         g.fill();
       }
-    }
-
-    /* The finished code, on a card that drifts as though it were hanging.
-     *
-     * Motion here is almost entirely translation, with only a fraction of a
-     * degree of roll: a bobbing code still scans, a tilting one starts to
-     * struggle. The card is drawn in screen space rather than through the
-     * world projection, so the shadow and the rounded corners can follow the
-     * bob directly. */
-    _drawFloatingCard(g, P, paving, ink) {
-      const n = this.n, quiet = this.opts.quietZone;
-      const t = performance.now() / 1000;
-      /* `settle` eases the float in over the final beat of the reveal, so the
-       * card does not lurch into motion the instant it goes flat. */
-      const settle = this.scanFlat;
-      const calm = this.reducedMotion ? 0 : settle;
-
-      const a = P(0, 0, 0), b1 = P(n, 0, 0), c = P(0, n, 0);
-      const cell = Math.max(Math.hypot(b1[0] - a[0], b1[1] - a[1]),
-                            Math.hypot(c[0] - a[0], c[1] - a[1])) / n;
-      const code = n * cell;
-      const card = (n + quiet * 2) * cell;
-      const cx = (a[0] + P(n, n, 0)[0]) / 2;
-      const cy = (a[1] + P(n, n, 0)[1]) / 2;
-
-      const bob = Math.sin(t * 0.62) * card * 0.022 * calm;
-      const sway = Math.sin(t * 0.41 + 0.9) * card * 0.012 * calm;
-      const roll = Math.sin(t * 0.33 + 2.1) * 0.011 * calm;      // ~0.6 degrees
-      const breathe = 1 + Math.sin(t * 0.52) * 0.006 * calm;
-      const lift = (bob + card * 0.022 * calm) / (card * 0.044 || 1); // 0..1
-
-      this._paintTexture(paving, ink);
-
-      /* Shadow tightens and darkens as the card sinks, opens up as it rises. */
-      if (calm > 0.01) {
-        const sr = card * (0.46 - 0.05 * lift);
-        g.save();
-        g.translate(cx + sway * 0.6, cy + card * 0.5 + card * 0.06);
-        g.scale(1, 0.16);
-        const sh = g.createRadialGradient(0, 0, sr * 0.1, 0, 0, sr);
-        const dark = 0.2 - 0.07 * lift;
-        sh.addColorStop(0, 'rgba(38,30,22,' + (dark * calm).toFixed(3) + ')');
-        sh.addColorStop(1, 'rgba(38,30,22,0)');
-        g.fillStyle = sh;
-        g.beginPath(); g.arc(0, 0, sr, 0, TAU); g.fill();
-        g.restore();
-      }
-
-      g.save();
-      g.translate(cx + sway, cy + bob);
-      g.rotate(roll);
-      g.scale(breathe, breathe);
-
-      const half = card / 2;
-      const radius = card * 0.045 * settle;
-      g.fillStyle = '#ffffff';
-      g.beginPath();
-      if (g.roundRect) g.roundRect(-half, -half, card, card, radius);
-      else g.rect(-half, -half, card, card);
-      g.fill();
-
-      g.imageSmoothingEnabled = false;
-      g.drawImage(this._tex, -code / 2, -code / 2, code, code);
-      g.restore();
     }
 
     /* A one-pixel-per-module image of the finished code. */
@@ -3175,63 +3123,25 @@ select {
   const mix = global.Grove.mixHex;
 
   /* ------------------------------------------------------------- palettes */
-  /* Four seasons. Each owns its sky, its ground, its foliage and the weather
+  /* Three scenes. Each owns its sky, its ground, its foliage and whatever is
    * falling through it. The identifier stays `sky` throughout the code because
-   * that is what a preset really is — a sky plus what falls out of it.
+   * that is what a scene really is — a sky plus what comes out of it.
    *
-   * Foliage is seasonal first: the accent swatch tints it, but only by a third,
-   * so autumn stays autumn whichever colour you pick. The accent owns the bloom,
-   * the wildflowers and the UI outright. */
+   * Foliage is the scene's first, with the accent swatch pulling it about a
+   * third of the way toward your pick. The accent owns the bloom, the
+   * wildflowers and the UI outright. */
   const SKIES = [
-    { id: 'sunny', label: 'Sunny',
+    { id: 'day', label: 'Day',
       skyTop: '#4aa8e0', skyBottom: '#cfe9f4', sky: '#8ccdec',
       paper: '#ffffff', stage: '#e8f3f9',
       ground: '#e6dfc9', paving: '#ddd4bb', rim: '#bfb495',
       ink: '#1d2118', bark: '#6b5236',
       grass: ['#6fae4e', '#5c9a41', '#82c05f'],
-      leaf: ['#7cc24f', '#96d465', '#5da33b', '#a9e07c', '#4a8a30'],
-      moduleGreen: '#2f5d33', moduleBlade: '#477d47',
-      leafShape: 'leaf',
-      weather: { kind: 'motes', count: 34 },
-      defaultAccent: 4, sun: 0.85, stars: 0, bloom: 0.16, vignette: 0.07 },
-
-    { id: 'fall', label: 'Fall',
-      skyTop: '#e09a4c', skyBottom: '#f8e3c2', sky: '#efc389',
-      paper: '#ffffff', stage: '#f2e2c8',
-      ground: '#e4d2ac', paving: '#d8c69e', rim: '#b8a179',
-      ink: '#241a10', bark: '#5f4227',
-      grass: ['#b09a53', '#9c8646', '#c2ad66'],
-      leaf: ['#e0703a', '#f0954e', '#c44f2c', '#f5b567', '#9c3a22'],
-      moduleGreen: '#4a4a22', moduleBlade: '#6b6733',
-      leafShape: 'leaf',
-      weather: { kind: 'leaves', count: 46 },
-      defaultAccent: 4, sun: 0.45, stars: 0, bloom: 0.30, vignette: 0.15 },
-
-    { id: 'rainy', label: 'Rainy',
-      skyTop: '#47555f', skyBottom: '#98a9b4', sky: '#6d7e89',
-      paper: '#ffffff', stage: '#8b9aa4',
-      ground: '#6f7d84', paving: '#7d8b92', rim: '#55636a',
-      ink: '#14191c', bark: '#4a4038',
-      grass: ['#4f7a52', '#446b47', '#5d8a5f'],
-      leaf: ['#4e8a55', '#5f9c64', '#3f7245', '#74ad78', '#2f5c36'],
-      moduleGreen: '#22422b', moduleBlade: '#356343',
-      leafShape: 'leaf',
-      weather: { kind: 'rain', count: 130 },
-      defaultAccent: 3, sun: 0.0, stars: 0, bloom: 0.12, vignette: 0.22 },
-
-    { id: 'winter', label: 'Winter',
-      skyTop: '#8fabc4', skyBottom: '#e2edf4', sky: '#b4c8d9',
-      paper: '#ffffff', stage: '#dde9f1',
-      ground: '#d6e0e8', paving: '#e4ecf2', rim: '#b3c2ce',
-      ink: '#171c22', bark: '#57493f',
-      grass: ['#9fb3bf', '#8ea3b0', '#b4c5cf'],
-      /* Snow-laden branches rather than bare ones — every dark module of the
-       * code is a leaf, so the tree can never actually shed them all. */
-      leaf: ['#eef5fb', '#ffffff', '#cfdeea', '#f7fbfe', '#b9cfe0'],
-      moduleGreen: '#2b4a48', moduleBlade: '#3f6a64',
+      moduleGreen: '#2f5d33', moduleBlade: '#4c8a4c',
       leafShape: 'blossom',
-      weather: { kind: 'snow', count: 96 },
-      defaultAccent: 5, sun: 0.25, stars: 0, bloom: 0.22, vignette: 0.10 },
+      leaf: ['#ffd5e2', '#ffe6ef', '#f7b9cd', '#fff2f6', '#e89ab4'],
+      weather: { kind: 'motes', count: 34 },
+      defaultAccent: 0, sun: 0.85, stars: 0, bloom: 0.18, vignette: 0.07 },
 
     { id: 'night', label: 'Night',
       skyTop: '#0c0819', skyBottom: '#241243', sky: '#150d2c',
@@ -3241,12 +3151,26 @@ select {
       ground: '#d9dcec', paving: '#c9cee2', rim: '#9aa1bd',
       ink: '#2a3a52', bark: '#4a3a5e',
       grass: ['#3d6b5c', '#4a7d69', '#5a8f79'],
-      moduleGreen: '#1d4438', moduleBlade: '#2f6b53',
-      leaf: ['#ff9ec2', '#ffc0d8', '#e87ba8', '#ffd6e6', '#c96690'],
+      moduleGreen: '#1d4438', moduleBlade: '#337a5d',
       leafShape: 'blossom',
+      leaf: ['#ff9ec2', '#ffc0d8', '#e87ba8', '#ffd6e6', '#c96690'],
       /* Warm slow drifting specks read as fireflies under a blossom tree. */
       weather: { kind: 'motes', count: 30 },
-      defaultAccent: 0, sun: 0, stars: 1.0, bloom: 0.52, vignette: 0.16 }
+      defaultAccent: 0, sun: 0, stars: 1.0, bloom: 0.52, vignette: 0.16 },
+
+    { id: 'rainy', label: 'Rainy',
+      skyTop: '#47555f', skyBottom: '#98a9b4', sky: '#6d7e89',
+      paper: '#ffffff', stage: '#8b9aa4',
+      ground: '#cfd6d9', paving: '#c2cace', rim: '#94a0a6',
+      ink: '#23303a', bark: '#4a4038',
+      grass: ['#4f7a52', '#446b47', '#5d8a5f'],
+      moduleGreen: '#22422b', moduleBlade: '#3c7048',
+      leafShape: 'blossom',
+      leaf: ['#e9b7c8', '#f4cfda', '#d197ab', '#f8e0e7', '#b87d92'],
+      weather: { kind: 'rain', count: 130 },
+      /* Every blossom that lands leaves a wet mark before it goes. */
+      droplets: true,
+      defaultAccent: 0, sun: 0.0, stars: 0, bloom: 0.14, vignette: 0.20 }
   ];
 
   /* Panel chrome, lifted straight from the site's tokens: --bg-alt for the
@@ -3492,7 +3416,6 @@ select {
   function onStateChange(s) {
     els.hint.textContent = BRAND.prompts[s] || BRAND.prompts.grown;
     els.stage.dataset.state = s;
-    if ((s === 'regrowing' || s === 'grown') && scene && scene.scanView) scene.setScanView(false);
 
     if (s === 'revealed') {
       if (global.GroveAudio && state.sound) global.GroveAudio.chime();
@@ -3522,21 +3445,6 @@ select {
       redirectTimer = setTimeout(tick, 1000);
     };
     tick();
-  }
-
-  /* The overhead view is what a phone can read; the plaza view is what the
-   * scene is for. Asking for one while the tree is still up reveals it first,
-   * so the button always does something sensible. */
-  function onScanChange(on) {
-    const btn = $('#scan');
-    if (btn) btn.setAttribute('aria-pressed', String(!!on));
-    if (els.stage) els.stage.dataset.scan = on ? 'true' : 'false';
-  }
-
-  function toggleScan() {
-    const want = !scene.scanView;
-    if (want && scene.state !== 'revealed' && scene.state !== 'revealing') scene.reveal();
-    scene.setScanView(want);
   }
 
   function cancelRedirect() {
@@ -3655,7 +3563,7 @@ select {
     els.skies = Array.from(document.querySelectorAll('button[data-sky]'));
     els.accents = Array.from(document.querySelectorAll('button[data-accent]'));
 
-    scene = new global.Grove.Scene(els.canvas, { onStateChange, onScanChange });
+    scene = new global.Grove.Scene(els.canvas, { onStateChange });
 
     /* `?q=` means a visitor scanned a code; `#q=` is our own session restore. */
     const params = new URLSearchParams(location.search);
@@ -3735,7 +3643,6 @@ select {
     });
 
     $('#reveal').addEventListener('click', () => scene.toggle());
-    $('#scan').addEventListener('click', toggleScan);
     $('#poster-open').addEventListener('click', openPoster);
     $('#copy-share').addEventListener('click', (e) => copy(shareLink(), e.currentTarget));
     els.poster.querySelector('.poster-close').addEventListener('click', () => { els.poster.hidden = true; });
