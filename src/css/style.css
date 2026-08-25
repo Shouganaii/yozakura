@@ -192,6 +192,47 @@ body {
 .go-cancel:hover { background: rgba(255, 255, 255, 0.3); }
 .go-count { font-variant-numeric: tabular-nums; }
 
+/* ------------------------------------------------------- arriving by link */
+/* Someone who followed a link came to arrive, not to build. The stage gets the
+   whole screen, and the builder is one tap away rather than in their face. */
+body[data-mode="visit"] .panel { display: none; }
+
+.make-own {
+  position: absolute;
+  left: 50%;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border-radius: 999px;
+  border: 1px solid var(--panel-line);
+  background: var(--tool);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 200ms ease, transform 200ms ease;
+}
+.make-own[hidden] { display: none; }
+.make-own:hover { color: var(--text); transform: translateX(-50%) translateY(-1px); }
+
+/* The way onward is the point of the page in visitor mode, so it gets room. */
+body[data-mode="visit"] .go {
+  bottom: 76px;
+  padding: 13px 14px 13px 22px;
+  font-size: 15px;
+  gap: 14px;
+}
+body[data-mode="visit"] .go-now { font-size: 14px; padding: 9px 18px; }
+/* A visitor is not here to operate the tree, and the prompt only competes with
+   the way onward. Tapping the scene still works for anyone who tries it. */
+body[data-mode="visit"] .stage-foot { display: none; }
+
 /* ------------------------------------------------------------------- panel */
 .panel {
   flex: 0 0 auto;
@@ -455,6 +496,8 @@ select {
 .field-sm .field-label { font-size: 10.5px; }
 .field-sm input, .field-sm select { height: 40px; font-size: 14px; }
 
+.field-share { margin-top: -2px; }
+.field-share input { font-size: 13px; }
 .share-row { display: flex; gap: 8px; }
 .share-row .btn { height: 40px; padding: 0 14px; font-size: 13px; }
 

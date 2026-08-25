@@ -379,6 +379,40 @@ animation settles.
 Requires a Chromium-based browser — `BarcodeDetector` is what makes this an
 independent check rather than the encoder grading its own homework.
 
+## Putting it on nextlvl.win
+
+Copy the built page into a folder on the site:
+
+```bash
+python3 build.py
+cp dist/index.html /path/to/nextlvl.win/yozakura/index.html
+```
+
+That is the whole deploy — one file, no server, no build step on the host. The
+only network request it makes is the Google Fonts stylesheet.
+
+The link base defaults to wherever the page is served from, so once it is at
+`https://nextlvl.win/yozakura/` every link it makes looks like:
+
+```
+https://nextlvl.win/yozakura/?q=MTBodHRwczovL25leHRsdmwud2lu…
+```
+
+Nothing to configure. If you later move it, or want links to run through a
+short domain you control, set **Link base** under *Redirect & encoding* and it
+is remembered locally.
+
+### The two sides of it
+
+Opening `/yozakura/` with no query lands in the **builder**: type a
+destination, pick a scene, copy your link.
+
+Opening one of those links lands in **visitor mode**: the builder is hidden
+entirely, the garden gets the whole screen, the code resolves on its own, and
+the way onward is the only control — with *Make your own* tucked underneath for
+anyone curious enough to follow it back. That is the shape worth linking to
+from a projects section.
+
 ## Licence
 
 MIT — see `LICENSE`. Swap it for whatever you prefer; nothing here constrains

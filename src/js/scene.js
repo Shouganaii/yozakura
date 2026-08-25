@@ -152,6 +152,21 @@
       this._buildAmbient();
       this._bindPointer();
 
+      /* Track the canvas box directly rather than listening for window resizes.
+       * The stage also changes size when the builder panel is hidden, and again
+       * when the deferred webfont swaps in and reflows — neither fires a window
+       * resize, and a stale backing store means the browser stretches a square
+       * code into a rectangle. */
+      /* Resized synchronously in the callback rather than deferred to a frame:
+       * ResizeObserver already fires after layout, and a page whose frames are
+       * throttled would otherwise sit on a stale backing store indefinitely.
+       * Setting width/height changes the backing store, not the observed box,
+       * so this cannot feed back into itself. */
+      if (typeof ResizeObserver !== 'undefined') {
+        this._ro = new ResizeObserver(() => this.resize());
+        this._ro.observe(canvas);
+      }
+
       /* Petals keep the loop running indefinitely, so hand the frames back
        * whenever the tab is not on screen. */
       document.addEventListener('visibilitychange', () => {
@@ -972,6 +987,20 @@
     /* ----------------------------------------------------------------- draw */
     draw() {
       if (!this.qr || !this.theme) return;
+
+      /* Self-heal a drifted backing store. The ResizeObserver above catches
+       * this everywhere it runs, but an environment that suspends layout while
+       * a page is not composited can miss the callback entirely — and a canvas
+       * whose backing store no longer matches its box gets stretched by the
+       * browser, which turns the square code into a rectangle. Checked
+       * occasionally rather than every frame, since it forces layout. */
+      if ((this._sizeCheck = (this._sizeCheck || 0) + 1) % 20 === 0) {
+        const box = this.canvas.getBoundingClientRect();
+        if (Math.abs(box.width - this.vw) > 1 || Math.abs(box.height - this.vh) > 1) {
+          this.resize();
+        }
+      }
+
       const g = this.ctx, n = this.n, th = this.theme, p = this.progress;
       const dpr = this.dpr;
 
@@ -1683,11 +1712,16 @@
     /* ------------------------------------------------------------- plumbing */
     resize() {
       const rect = this.canvas.getBoundingClientRect();
-      this.vw = Math.max(1, rect.width);
-      this.vh = Math.max(1, rect.height);
-      this.dpr = Math.min(global.devicePixelRatio || 1, 2);
-      this.canvas.width = Math.round(this.vw * this.dpr);
-      this.canvas.height = Math.round(this.vh * this.dpr);
+      const vw = Math.max(1, rect.width);
+      const vh = Math.max(1, rect.height);
+      const dpr = Math.min(global.devicePixelRatio || 1, 2);
+      const w = Math.round(vw * dpr), h = Math.round(vh * dpr);
+      if (w === this.canvas.width && h === this.canvas.height && this.vw === vw) return;
+      this.vw = vw;
+      this.vh = vh;
+      this.dpr = dpr;
+      this.canvas.width = w;
+      this.canvas.height = h;
       this.draw(0);
     }
 

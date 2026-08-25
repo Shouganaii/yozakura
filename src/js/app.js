@@ -177,11 +177,12 @@
     sky: 0,
     accent: 1,
     ecl: 'M',
-    /* 'direct'  — the QR holds the destination itself; always scannable.
-     * 'grove'   — the QR holds a link back to this page, which plays the
-     *             animation and then forwards. Lets you re-point the
-     *             destination later without reprinting the code. */
-    target: 'direct',
+    /* 'grove'   — the link points back here carrying the destination, so
+     *             whoever opens it gets the garden before they go on. This is
+     *             the shareable one, and the default.
+     * 'direct'   — the QR holds the destination itself. The most reliable
+     *             thing to print, but then only reprinting can re-point it. */
+    target: 'grove',
     autoRedirect: 0,
     /* Seconds between automatic colour changes; 0 is off. */
     cycle: 0,
@@ -597,11 +598,30 @@
       if (e.key === 'Escape') { els.poster.hidden = true; cancelRedirect(); els.go.hidden = true; }
     });
 
-    /* Landing straight from a scanned code should show the payoff, not the
-     * puzzle — the visitor already scanned it, they want to arrive. */
+    /* Someone who followed a link came to arrive, not to build. Give them the
+     * garden, the code and a way onward — and keep the builder one tap away
+     * rather than in their face. */
     if (arrivedVia) {
       els.stage.dataset.arrived = 'true';
-      setTimeout(() => scene.reveal(), 700);
+      document.body.dataset.mode = 'visit';
+      /* Hiding the panel grows the stage, and nothing fires a window resize for
+       * that — without this the canvas keeps its old backing size and CSS
+       * stretches the square code into a tall rectangle. */
+      requestAnimationFrame(() => scene.resize());
+      const own = $('#make-own');
+      if (own) {
+        own.hidden = false;
+        own.addEventListener('click', (e) => {
+          e.preventDefault();
+          document.body.dataset.mode = 'build';
+          own.hidden = true;
+          requestAnimationFrame(() => scene.resize());
+        });
+      }
+      /* A beat to take in the garden, then it resolves on its own. */
+      setTimeout(() => scene.reveal(), 900);
+    } else {
+      document.body.dataset.mode = 'build';
     }
 
     let resizeRaf;

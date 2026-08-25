@@ -196,6 +196,47 @@ body {
 .go-cancel:hover { background: rgba(255, 255, 255, 0.3); }
 .go-count { font-variant-numeric: tabular-nums; }
 
+/* ------------------------------------------------------- arriving by link */
+/* Someone who followed a link came to arrive, not to build. The stage gets the
+   whole screen, and the builder is one tap away rather than in their face. */
+body[data-mode="visit"] .panel { display: none; }
+
+.make-own {
+  position: absolute;
+  left: 50%;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border-radius: 999px;
+  border: 1px solid var(--panel-line);
+  background: var(--tool);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 200ms ease, transform 200ms ease;
+}
+.make-own[hidden] { display: none; }
+.make-own:hover { color: var(--text); transform: translateX(-50%) translateY(-1px); }
+
+/* The way onward is the point of the page in visitor mode, so it gets room. */
+body[data-mode="visit"] .go {
+  bottom: 76px;
+  padding: 13px 14px 13px 22px;
+  font-size: 15px;
+  gap: 14px;
+}
+body[data-mode="visit"] .go-now { font-size: 14px; padding: 9px 18px; }
+/* A visitor is not here to operate the tree, and the prompt only competes with
+   the way onward. Tapping the scene still works for anyone who tries it. */
+body[data-mode="visit"] .stage-foot { display: none; }
+
 /* ------------------------------------------------------------------- panel */
 .panel {
   flex: 0 0 auto;
@@ -459,6 +500,8 @@ select {
 .field-sm .field-label { font-size: 10.5px; }
 .field-sm input, .field-sm select { height: 40px; font-size: 14px; }
 
+.field-share { margin-top: -2px; }
+.field-share input { font-size: 13px; }
 .share-row { display: flex; gap: 8px; }
 .share-row .btn { height: 40px; padding: 0 14px; font-size: 13px; }
 
@@ -571,6 +614,10 @@ select {
     </button>
   </div>
 
+  <a id="make-own" class="make-own" href="#build" hidden>
+    Make your own <span aria-hidden="true">&rarr;</span>
+  </a>
+
   <div id="go" class="go" hidden>
     <span class="go-text" aria-live="polite">Continue to <b class="go-host"></b></span>
     <button id="go-now" class="go-now" type="button">Go<span class="go-count"></span></button>
@@ -596,6 +643,14 @@ select {
   </div>
 
   <p id="status" class="status" role="status"></p>
+
+  <label class="field field-share">
+    <span class="field-label">Your link</span>
+    <span class="share-row">
+      <input id="share-link" type="text" readonly spellcheck="false">
+      <button id="copy-share" class="btn btn-ghost" type="button">Copy</button>
+    </span>
+  </label>
 
   <div class="row row-skies" role="group" aria-label="Scene">
     <button class="chip" type="button" data-sky="day" aria-pressed="true">
@@ -642,8 +697,8 @@ select {
       <label class="field field-sm">
         <span class="field-label">What the code points at</span>
         <select id="target">
+          <option value="grove">Through the garden, then onward</option>
           <option value="direct">Straight to the destination</option>
-          <option value="grove">Through this page (animated, re-pointable)</option>
         </select>
       </label>
 
@@ -673,21 +728,13 @@ select {
       </label>
     </div>
 
-    <label class="field field-sm">
-      <span class="field-label">Shareable link</span>
-      <span class="share-row">
-        <input id="share-link" type="text" readonly spellcheck="false">
-        <button id="copy-share" class="btn btn-ghost" type="button">Copy</button>
-      </span>
-    </label>
-
     <p class="note">
-      <b>Straight to the destination</b> puts the URL inside the code itself — the most
-      reliable choice, though reprinting is the only way to change where it leads.
-      <b>Through this page</b> encodes a link back to the <i>link base</i> above, carrying the
-      destination with it, so whoever scans gets the animation before they arrive. Set the
-      link base to the host you will actually deploy to — or to a short link you control, if
-      you want to be able to re-point a code that is already printed.
+      <b>Through the garden</b> is the shareable one: your link points back here carrying
+      the destination, so whoever opens it gets the tree and the code before they go on.
+      Set the <i>link base</i> to the host you will actually deploy to.
+      <b>Straight to the destination</b> puts the URL inside the QR itself instead — the most
+      reliable thing to print, though reprinting is then the only way to change where it
+      leads.
     </p>
   </details>
 </section>
@@ -1380,6 +1427,21 @@ select {
       this._buildStars();
       this._buildAmbient();
       this._bindPointer();
+
+      /* Track the canvas box directly rather than listening for window resizes.
+       * The stage also changes size when the builder panel is hidden, and again
+       * when the deferred webfont swaps in and reflows — neither fires a window
+       * resize, and a stale backing store means the browser stretches a square
+       * code into a rectangle. */
+      /* Resized synchronously in the callback rather than deferred to a frame:
+       * ResizeObserver already fires after layout, and a page whose frames are
+       * throttled would otherwise sit on a stale backing store indefinitely.
+       * Setting width/height changes the backing store, not the observed box,
+       * so this cannot feed back into itself. */
+      if (typeof ResizeObserver !== 'undefined') {
+        this._ro = new ResizeObserver(() => this.resize());
+        this._ro.observe(canvas);
+      }
 
       /* Petals keep the loop running indefinitely, so hand the frames back
        * whenever the tab is not on screen. */
@@ -2201,6 +2263,20 @@ select {
     /* ----------------------------------------------------------------- draw */
     draw() {
       if (!this.qr || !this.theme) return;
+
+      /* Self-heal a drifted backing store. The ResizeObserver above catches
+       * this everywhere it runs, but an environment that suspends layout while
+       * a page is not composited can miss the callback entirely — and a canvas
+       * whose backing store no longer matches its box gets stretched by the
+       * browser, which turns the square code into a rectangle. Checked
+       * occasionally rather than every frame, since it forces layout. */
+      if ((this._sizeCheck = (this._sizeCheck || 0) + 1) % 20 === 0) {
+        const box = this.canvas.getBoundingClientRect();
+        if (Math.abs(box.width - this.vw) > 1 || Math.abs(box.height - this.vh) > 1) {
+          this.resize();
+        }
+      }
+
       const g = this.ctx, n = this.n, th = this.theme, p = this.progress;
       const dpr = this.dpr;
 
@@ -2912,11 +2988,16 @@ select {
     /* ------------------------------------------------------------- plumbing */
     resize() {
       const rect = this.canvas.getBoundingClientRect();
-      this.vw = Math.max(1, rect.width);
-      this.vh = Math.max(1, rect.height);
-      this.dpr = Math.min(global.devicePixelRatio || 1, 2);
-      this.canvas.width = Math.round(this.vw * this.dpr);
-      this.canvas.height = Math.round(this.vh * this.dpr);
+      const vw = Math.max(1, rect.width);
+      const vh = Math.max(1, rect.height);
+      const dpr = Math.min(global.devicePixelRatio || 1, 2);
+      const w = Math.round(vw * dpr), h = Math.round(vh * dpr);
+      if (w === this.canvas.width && h === this.canvas.height && this.vw === vw) return;
+      this.vw = vw;
+      this.vh = vh;
+      this.dpr = dpr;
+      this.canvas.width = w;
+      this.canvas.height = h;
       this.draw(0);
     }
 
@@ -3254,11 +3335,12 @@ select {
     sky: 0,
     accent: 1,
     ecl: 'M',
-    /* 'direct'  — the QR holds the destination itself; always scannable.
-     * 'grove'   — the QR holds a link back to this page, which plays the
-     *             animation and then forwards. Lets you re-point the
-     *             destination later without reprinting the code. */
-    target: 'direct',
+    /* 'grove'   — the link points back here carrying the destination, so
+     *             whoever opens it gets the garden before they go on. This is
+     *             the shareable one, and the default.
+     * 'direct'   — the QR holds the destination itself. The most reliable
+     *             thing to print, but then only reprinting can re-point it. */
+    target: 'grove',
     autoRedirect: 0,
     /* Seconds between automatic colour changes; 0 is off. */
     cycle: 0,
@@ -3674,11 +3756,30 @@ select {
       if (e.key === 'Escape') { els.poster.hidden = true; cancelRedirect(); els.go.hidden = true; }
     });
 
-    /* Landing straight from a scanned code should show the payoff, not the
-     * puzzle — the visitor already scanned it, they want to arrive. */
+    /* Someone who followed a link came to arrive, not to build. Give them the
+     * garden, the code and a way onward — and keep the builder one tap away
+     * rather than in their face. */
     if (arrivedVia) {
       els.stage.dataset.arrived = 'true';
-      setTimeout(() => scene.reveal(), 700);
+      document.body.dataset.mode = 'visit';
+      /* Hiding the panel grows the stage, and nothing fires a window resize for
+       * that — without this the canvas keeps its old backing size and CSS
+       * stretches the square code into a tall rectangle. */
+      requestAnimationFrame(() => scene.resize());
+      const own = $('#make-own');
+      if (own) {
+        own.hidden = false;
+        own.addEventListener('click', (e) => {
+          e.preventDefault();
+          document.body.dataset.mode = 'build';
+          own.hidden = true;
+          requestAnimationFrame(() => scene.resize());
+        });
+      }
+      /* A beat to take in the garden, then it resolves on its own. */
+      setTimeout(() => scene.reveal(), 900);
+    } else {
+      document.body.dataset.mode = 'build';
     }
 
     let resizeRaf;

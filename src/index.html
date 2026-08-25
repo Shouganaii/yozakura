@@ -44,6 +44,10 @@
     </button>
   </div>
 
+  <a id="make-own" class="make-own" href="#build" hidden>
+    Make your own <span aria-hidden="true">&rarr;</span>
+  </a>
+
   <div id="go" class="go" hidden>
     <span class="go-text" aria-live="polite">Continue to <b class="go-host"></b></span>
     <button id="go-now" class="go-now" type="button">Go<span class="go-count"></span></button>
@@ -69,6 +73,14 @@
   </div>
 
   <p id="status" class="status" role="status"></p>
+
+  <label class="field field-share">
+    <span class="field-label">Your link</span>
+    <span class="share-row">
+      <input id="share-link" type="text" readonly spellcheck="false">
+      <button id="copy-share" class="btn btn-ghost" type="button">Copy</button>
+    </span>
+  </label>
 
   <div class="row row-skies" role="group" aria-label="Scene">
     <button class="chip" type="button" data-sky="day" aria-pressed="true">
@@ -115,8 +127,8 @@
       <label class="field field-sm">
         <span class="field-label">What the code points at</span>
         <select id="target">
+          <option value="grove">Through the garden, then onward</option>
           <option value="direct">Straight to the destination</option>
-          <option value="grove">Through this page (animated, re-pointable)</option>
         </select>
       </label>
 
@@ -146,21 +158,13 @@
       </label>
     </div>
 
-    <label class="field field-sm">
-      <span class="field-label">Shareable link</span>
-      <span class="share-row">
-        <input id="share-link" type="text" readonly spellcheck="false">
-        <button id="copy-share" class="btn btn-ghost" type="button">Copy</button>
-      </span>
-    </label>
-
     <p class="note">
-      <b>Straight to the destination</b> puts the URL inside the code itself — the most
-      reliable choice, though reprinting is the only way to change where it leads.
-      <b>Through this page</b> encodes a link back to the <i>link base</i> above, carrying the
-      destination with it, so whoever scans gets the animation before they arrive. Set the
-      link base to the host you will actually deploy to — or to a short link you control, if
-      you want to be able to re-point a code that is already printed.
+      <b>Through the garden</b> is the shareable one: your link points back here carrying
+      the destination, so whoever opens it gets the tree and the code before they go on.
+      Set the <i>link base</i> to the host you will actually deploy to.
+      <b>Straight to the destination</b> puts the URL inside the QR itself instead — the most
+      reliable thing to print, though reprinting is then the only way to change where it
+      leads.
     </p>
   </details>
 </section>
