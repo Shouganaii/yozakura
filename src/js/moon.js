@@ -93,13 +93,16 @@
     return out;
   }
 
-  /* A five-petal blossom, precomputed as unit points. Broad petals with shallow
-   * notches — deep ones read as a star rather than sakura. */
+  /* A five-petal blossom, precomputed as unit points. Sampled around a
+   * raised-cosine lobe rather than alternating two radii: the exponent below 1
+   * gives broad round petals split by a narrow notch, which is what separates
+   * sakura from an asterisk. */
   const BLOSSOM = (() => {
-    const pts = [];
-    for (let i = 0; i < 10; i++) {
-      const a = (i / 10) * TAU - Math.PI / 2;
-      const r = (i % 2 === 0) ? 1 : 0.68;
+    const pts = [], N = 20;
+    for (let i = 0; i < N; i++) {
+      const a = (i / N) * TAU - Math.PI / 2;
+      const lobe = Math.pow(Math.abs(Math.cos(2.5 * a)), 0.55);
+      const r = 0.52 + 0.48 * lobe;
       pts.push([Math.cos(a) * r, Math.sin(a) * r]);
     }
     return pts;
@@ -222,23 +225,40 @@
       const tips = [];
 
       const grow = (x, y, dx, dy, len, thick, depth) => {
-        const ex = x + dx * len, ey = y + dy * len;
-        limbs.push({ x1: x, y1: y, x2: ex, y2: ey, thick,
-                     thick2: thick * (depth === 0 ? 0.8 : 0.72), depth });
+        /* Each limb is laid down as a run of short segments that turn a little
+         * at every step, so it arrives as a curve. Drawn as one straight quad
+         * it read as a chopstick, and a node of them as a folding fan. */
+        const SEG = depth === 0 ? 8 : 5;
+        const curl = (rand() - 0.5) * 0.9;
+        const droop = (0.16 + depth * 0.06) / SEG;
+        const endThick = thick * (depth === 0 ? 0.74 : 0.62);
+        let px = x, py = y, ux = dx, uy = dy;
+        for (let k = 0; k < SEG; k++) {
+          const a = curl / SEG;
+          let rx = ux * Math.cos(a) - uy * Math.sin(a);
+          let ry = ux * Math.sin(a) + uy * Math.cos(a) + droop;
+          const m0 = Math.hypot(rx, ry) || 1;
+          ux = rx / m0; uy = ry / m0;
+          const qx = px + ux * (len / SEG), qy = py + uy * (len / SEG);
+          limbs.push({ x1: px, y1: py, x2: qx, y2: qy,
+                       thick:  lerp(thick, endThick, k / SEG),
+                       thick2: lerp(thick, endThick, (k + 1) / SEG), depth });
+          px = qx; py = qy;
+        }
         /* Spread is how far blossom scatters from a node, and it has to stay
          * small. At a fraction of the branch length it threw blossom across a
          * quarter of the viewport and the canopy detached from the bough. */
-        if (depth >= 3 || len < 0.05) { tips.push({ x: ex, y: ey, spread: 0.028 }); return; }
-        tips.push({ x: ex, y: ey, spread: 0.020 });
-        const kids = depth === 0 ? 3 : 2;
+        if (depth >= 3 || len < 0.05) { tips.push({ x: px, y: py, spread: 0.028 }); return; }
+        tips.push({ x: px, y: py, spread: 0.020 });
+        /* Two kids at most, and often one — three at every node is what built
+         * the fan. */
+        const kids = depth === 0 ? 2 : (rand() < 0.6 ? 2 : 1);
         for (let i = 0; i < kids; i++) {
-          /* Sub-branches fan forward and downward — the shape of a bough seen
-           * from below, rather than a bush. */
-          const turn = (rand() - 0.45) * 1.1;
-          const nx = dx * Math.cos(turn) - dy * Math.sin(turn);
-          const ny = dx * Math.sin(turn) + dy * Math.cos(turn) + 0.16;
+          const turn = (i === 0 ? -1 : 1) * (0.22 + rand() * 0.55) + (rand() - 0.5) * 0.2;
+          const nx = ux * Math.cos(turn) - uy * Math.sin(turn);
+          const ny = ux * Math.sin(turn) + uy * Math.cos(turn) + 0.14;
           const m = Math.hypot(nx, ny) || 1;
-          grow(ex, ey, nx / m, ny / m, len * (0.62 + rand() * 0.16), thick * 0.68, depth + 1);
+          grow(px, py, nx / m, ny / m, len * (0.58 + rand() * 0.18), thick * 0.66, depth + 1);
         }
       };
 
@@ -256,10 +276,16 @@
       const qr = this.qr, n = this.n;
       const rand = mulberry32(hashString('bloom:' + qr.version + ':' + qr.mask + ':' + n));
 
+      /* How much room a module has to spill into: a module ringed by other
+       * dark ones can wear a fat blossom, an isolated one has to stay inside
+       * its cell or it eats the contrast a scanner needs. */
+      const dk = (x, y) => (x < 0 || y < 0 || x >= n || y >= n) ? 0 : this._allDark[y * n + x];
       const targets = [];
       for (let y = 0; y < n; y++) {
         for (let x = 0; x < n; x++) {
-          if (qr.get(x, y)) targets.push({ x, y, role: global.QR.moduleRole(qr, x, y) });
+          if (!qr.get(x, y)) continue;
+          const open = 4 - (dk(x - 1, y) + dk(x + 1, y) + dk(x, y - 1) + dk(x, y + 1));
+          targets.push({ x, y, role: global.QR.moduleRole(qr, x, y), bed: 0.52 + (4 - open) * 0.065 });
         }
       }
 
@@ -270,13 +296,17 @@
       for (const L of this.limbs) {
         if (L.depth < 1) continue;
         const len = Math.hypot(L.x2 - L.x1, L.y2 - L.y1);
-        const count = Math.max(3, Math.round(len * 70));
+        /* Few sites, each wide. Many tight ones sleeved every limb in an even
+         * tube of pink; sakura clusters in puffs with wood showing between. */
+        const count = Math.max(1, Math.round(len * 34));
+        const ux = (L.x2 - L.x1) / (len || 1), uy = (L.y2 - L.y1) / (len || 1);
         for (let i = 0; i < count; i++) {
           const u = 0.1 + rand() * 0.9;
+          const off = (rand() - 0.5) * 0.05;
           sites.push({
-            x: lerp(L.x1, L.x2, u),
-            y: lerp(L.y1, L.y2, u),
-            spread: 0.012 + L.depth * 0.006
+            x: lerp(L.x1, L.x2, u) - uy * off,
+            y: lerp(L.y1, L.y2, u) + ux * off + 0.008,
+            spread: (0.026 + L.depth * 0.012) * (0.6 + rand() * 0.9)
           });
         }
       }
@@ -299,7 +329,7 @@
         const dur = 0.3 + rand() * 0.16;
         return {
           hx: h.hx, hy: h.hy,
-          tx: t.x, ty: t.y, role: t.role,
+          tx: t.x, ty: t.y, role: t.role, bed: t.bed,
           dur, delay: priority * (1 - dur), land: priority * (1 - dur) + dur,
           arc: (rand() - 0.5) * 0.5,
           size: 1.0 + rand() * 0.55,
@@ -309,7 +339,7 @@
         };
       });
 
-      const extra = Math.round(clamp(2000 - targets.length, 700, 1700));
+      const extra = Math.round(clamp(1150 - targets.length, 160, 420));
       this.filler = Array.from({ length: extra }, (_, i) => {
         const s = site(i * 3 + 1);
         const h = home(s);
@@ -605,7 +635,7 @@
       g.fill();
 
       /* ---- the code, written into the face ---- */
-      this._paintFace(face, mixHex(face, th.maria, 1 - inkT * 0.15), mixHex(th.maria, th.moduleInk, inkT));
+      this._paintFace(face, mixHex(face, th.maria, 0.30 + inkT * 0.5), mixHex(th.maria, th.moduleInk, inkT));
       g.save();
       g.beginPath();
       g.arc(m.cx, m.cy, m.r * 0.995, 0, TAU);
@@ -661,14 +691,27 @@
       const s = Math.min(this.vw, this.vh);
       const slide = easeInCubic(withdraw);
       const bOx = -slide * 0.5 * this.vw, bOy = -slide * 0.24 * this.vh;
+      const settled = this._settledTones();
       for (const b of this.blossoms) {
         const at = this._blossomAt(b, p);
-        if (at.landed) continue;
+        if (at.landed) {
+          /* A landed blossom does not become paint. The module underneath is
+           * already inked for the scanner; the blossom sits on it so the
+           * finished code still reads as a tree in flower. */
+          items.push({
+            x: m.x0 + (b.tx + 0.5) * m.module,
+            y: m.y0 + (b.ty + 0.5) * m.module,
+            r: m.module * b.bed,
+            colour: settled[(b.tone * settled.length) | 0] || settled[0],
+            spin: b.spin, squash: 1, alpha: 1
+          });
+          continue;
+        }
         const onBranch = at.t <= 0;
         items.push({
           x: at.x * this.vw + (onBranch ? bOx : 0),
           y: at.y * this.vh + (onBranch ? bOy : 0),
-          r: b.size * s * 0.011,
+          r: b.size * s * 0.0135,
           colour: this._blossomColour(b, at.t),
           spin: b.spin + now / 1000 * b.spinRate,
           squash: 0.55 + 0.45 * Math.abs(Math.cos(b.flutter + now / 900)),
@@ -682,7 +725,7 @@
         items.push({
           x: at.x * this.vw + (onBranch ? bOx : 0),
           y: at.y * this.vh + (onBranch ? bOy : 0),
-          r: f.size * s * 0.010,
+          r: f.size * s * 0.0125,
           colour: f.colour,
           spin: f.spin + now / 1000 * f.spinRate,
           squash: 0.55 + 0.45 * Math.abs(Math.cos(f.flutter + now / 900)),
@@ -726,6 +769,23 @@
 
     /* Blossom stamped in colour+alpha buckets, chunked — canvas rasterises a
      * path slower than linearly in its subpath count. */
+    /* Landed blossom keeps a little tonal variation so a filled region reads
+     * as many flowers rather than one dark mass — all of it still well inside
+     * the module ink, which is what the contrast budget is spent on. */
+    _settledTones() {
+      const th = this.theme;
+      const key = th.moduleInk + th.leaf[2];
+      if (this._tonesFor !== key) {
+        this._tonesFor = key;
+        /* Pulled a fifth of the way toward the mood's blossom so a filled
+         * module reads as dark sakura rather than ink. Contrast against the
+         * moon face stays around 10:1, well past anything a scanner needs. */
+        const base = mixHex(th.moduleInk, th.leaf[2], 0.2);
+        this._tones = [-0.16, -0.05, 0.06, 0.17, 0.28].map(k => shade(base, k));
+      }
+      return this._tones;
+    }
+
     _stamp(g, items) {
       if (!items.length) return;
       const STEPS = 5, CHUNK = 40;
@@ -748,7 +808,7 @@
             const it = arr[k];
             const r = Math.max(0.7, it.r);
             const cs = Math.cos(it.spin), sn = Math.sin(it.spin);
-            for (let q = 0; q < 10; q++) {
+            for (let q = 0; q < BLOSSOM.length; q++) {
               const bx = BLOSSOM[q][0] * r, by = BLOSSOM[q][1] * r * it.squash;
               const px = it.x + bx * cs - by * sn;
               const py = it.y + bx * sn + by * cs;
