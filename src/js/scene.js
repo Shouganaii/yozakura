@@ -19,6 +19,19 @@
   const easeOutBack = (t) => { const c = 1.70158, c3 = c + 1; return 1 + c3 * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
   const easeInCubic = (t) => t * t * t;
 
+  /* A five-petal blossom as a closed polygon — petal tips and the notches
+   * between them, alternating. Precomputed as unit points so stamping one is
+   * ten multiply-adds, which is what makes thousands of them affordable. */
+  const BLOSSOM = (() => {
+    const pts = [];
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * TAU - Math.PI / 2;
+      const r = (i % 2 === 0) ? 1 : 0.68;
+      pts.push([Math.cos(a) * r, Math.sin(a) * r]);
+    }
+    return pts;
+  })();
+
   /* Map a global 0..1 clock onto a sub-range of the timeline. */
   function span(t, from, to) { return clamp((t - from) / (to - from), 0, 1); }
 
@@ -459,7 +472,7 @@
         const ex = x + dx * len, ey = y + dy * len, ez = z + dz * len;
         /* Limbs taper toward their tip, and harder the further out they are. */
         branches.push({ x1: x, y1: y, z1: z, x2: ex, y2: ey, z2: ez,
-                        thick, thick2: thick * (depth >= 3 ? 0.38 : 0.64), depth });
+                        thick, thick2: thick * (depth === 0 ? 0.66 : depth >= 3 ? 0.38 : 0.62), depth });
         if (depth >= 4 || len < n * 0.045) { tips.push({ x: ex, y: ey, z: ez, spread: len * 1.25 }); return; }
         /* Interior nodes carry foliage too — without them the crown reads as a
          * hollow ring once the tips are pushed outward below. */
@@ -476,7 +489,7 @@
           grow(ex, ey, ez, nx / m, ny / m, nz / m, len * (0.62 + rand() * 0.16), thick * 0.62, depth + 1);
         }
       };
-      grow(cx, cy, 0, 0, 0, 1, trunkH, n * 0.053, 0);
+      grow(cx, cy, 0, 0, 0, 1, trunkH, n * 0.085, 0);
 
       let crownR = 0.0001;
       for (const t of tips) crownR = Math.max(crownR, Math.hypot(t.x - cx, t.y - cy));
@@ -996,7 +1009,10 @@
       const blockH = lerp(0.85, 0, flatten);   // in cell units, so it reads at any version
       const inkT = smoothstep(span(p, T.flatten[0], T.lock[1]));
       const paving = mixHex(th.paving, '#ffffff', inkT);
-      const ink = mixHex(th.ink, '#000000', inkT);
+      /* The code's dark modules settle into planted green rather than black —
+       * still dark enough against pale stone for a scanner, but the plaza reads
+       * as a garden rather than a printout. */
+      const ink = mixHex(th.ink, th.moduleGreen || '#000000', inkT);
 
       /* Stars first, fading as the sky washes out toward the code. */
       if (!this.reducedMotion) this._drawStars(g, (th.stars || 0) * (1 - lockT));
@@ -1161,7 +1177,8 @@
         const d = dz(pos.x, pos.y, pos.z);
         const c = P(pos.x, pos.y, pos.z);
         const item = { c, colour: this._leafColour(l, pos.t), spin: l.spin + now / 1000 * l.spinRate,
-                       r: l.size * fit.zoom * 0.5, alpha: 1 };
+                       r: l.size * fit.zoom * 0.5, alpha: 1,
+                       squash: 0.55 + 0.45 * Math.abs(Math.cos(l.flutter + now / 900)) };
         (d < trunkDepth ? behind : front).push(item);
       }
       for (const pt of this.petals) {
@@ -1170,17 +1187,19 @@
         const d = dz(pos.x, pos.y, pos.z);
         const c = P(pos.x, pos.y, pos.z);
         const item = { c, colour: pt.colour, spin: pt.spin + now / 1000 * pt.spinRate,
-                       r: pt.size * fit.zoom * 0.5, alpha: pos.alpha };
+                       r: pt.size * fit.zoom * 0.5, alpha: pos.alpha,
+                       squash: 0.55 + 0.45 * Math.abs(Math.cos(pt.flutter + now / 900)) };
         (d < trunkDepth ? behind : front).push(item);
       }
 
       const CHUNK = 48;   // subpaths per flush; see the note in _drawGround
       const ALPHA_STEPS = 5;
 
-      /* A pointed oval rather than a rectangle: four points, same cost as the
-       * quad it replaces, but the canopy reads as blossom instead of confetti.
-       * Fading petals are quantised into a few alpha buckets so a whole cloud
-       * still costs a handful of fills. */
+      /* Each season stamps its own silhouette: a five-petal blossom for the
+       * cherry seasons, a pointed leaf for the rest. Fading petals are
+       * quantised into a few alpha buckets so a whole cloud still costs a
+       * handful of fills. */
+      const blossomShape = th.leafShape === 'blossom';
       const drawLeaves = (list) => {
         if (!list.length) return;
         const buckets = new Map();
@@ -1202,9 +1221,23 @@
             for (let k = i; k < end; k++) {
               const it = arr[k];
               const r = Math.max(0.6, it.r);
+              const x = it.c[0], y = it.c[1];
+              if (blossomShape) {
+                const c2 = Math.cos(it.spin), s2 = Math.sin(it.spin);
+                /* `squash` is the same edge-on foreshortening the drifting
+                 * petals use, so a blossom turns over as it falls. */
+                const sq = it.squash === undefined ? 1 : it.squash;
+                for (let q = 0; q < 10; q++) {
+                  const bx = BLOSSOM[q][0] * r, by = BLOSSOM[q][1] * r * sq;
+                  const px = x + bx * c2 - by * s2;
+                  const py = y + bx * s2 + by * c2;
+                  if (q === 0) g.moveTo(px, py); else g.lineTo(px, py);
+                }
+                g.closePath();
+                continue;
+              }
               const cs = Math.cos(it.spin) * r, sn = Math.sin(it.spin) * r;
               const vx = -sn * 0.62, vy = cs * 0.62;
-              const x = it.c[0], y = it.c[1];
               g.moveTo(x - cs, y - sn);                       // tip
               g.lineTo(x + cs * 0.15 - vx, y + sn * 0.15 - vy); // shoulder
               g.lineTo(x + cs, y + sn);                       // tail
@@ -1308,14 +1341,17 @@
           g.strokeStyle = shade(bark, -0.42);
           g.lineWidth = Math.max(0.7, sg.thick * 0.07);
           g.beginPath();
-          const plates = Math.max(4, Math.round(len / (sg.thick * 1.15)));
+          const plates = Math.max(7, Math.round(len / (sg.thick * 0.55)));
           for (let k = 1; k < plates; k++) {
             const t = k / plates;
-            const w = (sg.thick + (sg.thick2 - sg.thick) * t) * 0.30;
+            const w = (sg.thick + (sg.thick2 - sg.thick) * t) * 0.42;
             const cxp = sg.a1[0] + dx * t, cyp = sg.a1[1] + dy * t;
-            const skew = ((k % 2) ? 0.22 : -0.22) * w;
-            g.moveTo(cxp + px * -w + dx / len * skew, cyp + py * -w + dy / len * skew);
-            g.lineTo(cxp + px * w * 0.55 + dx / len * skew, cyp + py * w * 0.55 + dy / len * skew);
+            /* Staggered short strokes, kept to the shadow side. */
+            const lane = ((k % 3) - 1) * 0.42;
+            const from = lane - 0.26, to = lane + 0.20;
+            const skew = ((k % 2) ? 0.3 : -0.3) * w;
+            g.moveTo(cxp + px * w * from + dx / len * skew, cyp + py * w * from + dy / len * skew);
+            g.lineTo(cxp + px * w * to + dx / len * skew, cyp + py * w * to + dy / len * skew);
           }
           g.stroke();
         }
@@ -1441,7 +1477,7 @@
        * this only ever shows through where the code has yet to arrive. */
       const latent = this._allDark;
       if (latent) {
-        g.fillStyle = mixHex(paving, ink, 0.13);
+        g.fillStyle = mixHex(paving, ink, 0.20);
         for (let gy = 0; gy < n; gy++) {
           g.beginPath();
           let any = false;
@@ -1502,6 +1538,41 @@
           any = true;
         }
         if (any) g.fill();
+      }
+
+      /* Grass growing out of the code's dark modules. Kept short and inside the
+       * cell — blades that overhang would blur the very edges a scanner keys
+       * on. Flushed a row at a time, like everything else here. */
+      if (inkT > 0.06 && th.moduleBlade) {
+        g.fillStyle = th.moduleBlade;
+        g.globalAlpha = Math.min(1, inkT * 1.25);
+        const H = 0.34 * inkT;
+        for (let gy = 0; gy < n; gy++) {
+          g.beginPath();
+          let any = false;
+          for (let gx = 0; gx < n; gx++) {
+            if (!darkArr[gy * n + gx]) continue;
+            const hash = (Math.imul(gx + 1, 73856093) ^ Math.imul(gy + 1, 19349663)) >>> 0;
+            for (let b = 0; b < 3; b++) {
+              const r1 = ((hash >> (b * 7)) & 255) / 255;
+              const r2 = ((hash >> (b * 7 + 8)) & 255) / 255;
+              const bx = gx + 0.2 + r1 * 0.6;
+              const by = gy + 0.2 + r2 * 0.6;
+              const lean = (r1 - 0.5) * 0.24;
+              const w = 0.075;
+              const b1 = P(bx - w, by, 0);
+              const b2 = P(bx + w, by, 0);
+              const tip = P(bx + lean, by + lean * 0.5, H * (0.7 + r2 * 0.6));
+              g.moveTo(b1[0], b1[1]);
+              g.lineTo(tip[0], tip[1]);
+              g.lineTo(b2[0], b2[1]);
+              g.closePath();
+              any = true;
+            }
+          }
+          if (any) g.fill();
+        }
+        g.globalAlpha = 1;
       }
 
       /* Freshly landed modules flash warm; there are never many at once. */

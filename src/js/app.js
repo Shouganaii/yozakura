@@ -46,6 +46,8 @@
       ink: '#1d2118', bark: '#6b5236',
       grass: ['#6fae4e', '#5c9a41', '#82c05f'],
       leaf: ['#7cc24f', '#96d465', '#5da33b', '#a9e07c', '#4a8a30'],
+      moduleGreen: '#2f5d33', moduleBlade: '#477d47',
+      leafShape: 'leaf',
       weather: { kind: 'motes', count: 34 },
       defaultAccent: 4, sun: 0.85, stars: 0, bloom: 0.16, vignette: 0.07 },
 
@@ -56,6 +58,8 @@
       ink: '#241a10', bark: '#5f4227',
       grass: ['#b09a53', '#9c8646', '#c2ad66'],
       leaf: ['#e0703a', '#f0954e', '#c44f2c', '#f5b567', '#9c3a22'],
+      moduleGreen: '#4a4a22', moduleBlade: '#6b6733',
+      leafShape: 'leaf',
       weather: { kind: 'leaves', count: 46 },
       defaultAccent: 4, sun: 0.45, stars: 0, bloom: 0.30, vignette: 0.15 },
 
@@ -66,6 +70,8 @@
       ink: '#14191c', bark: '#4a4038',
       grass: ['#4f7a52', '#446b47', '#5d8a5f'],
       leaf: ['#4e8a55', '#5f9c64', '#3f7245', '#74ad78', '#2f5c36'],
+      moduleGreen: '#22422b', moduleBlade: '#356343',
+      leafShape: 'leaf',
       weather: { kind: 'rain', count: 130 },
       defaultAccent: 3, sun: 0.0, stars: 0, bloom: 0.12, vignette: 0.22 },
 
@@ -78,19 +84,25 @@
       /* Snow-laden branches rather than bare ones — every dark module of the
        * code is a leaf, so the tree can never actually shed them all. */
       leaf: ['#eef5fb', '#ffffff', '#cfdeea', '#f7fbfe', '#b9cfe0'],
+      moduleGreen: '#2b4a48', moduleBlade: '#3f6a64',
+      leafShape: 'blossom',
       weather: { kind: 'snow', count: 96 },
       defaultAccent: 5, sun: 0.25, stars: 0, bloom: 0.22, vignette: 0.10 },
 
     { id: 'night', label: 'Night',
       skyTop: '#0c0819', skyBottom: '#241243', sky: '#150d2c',
-      paper: '#ffffff', stage: '#150d2c',
-      ground: '#1a1030', paving: '#221540', rim: '#120b24',
-      ink: '#07040f', bark: '#3d2f4f',
-      grass: ['#24413c', '#2f5148', '#3b6455'],
+      paper: '#ffffff', stage: '#1b1236',
+      /* Moonlit stone. The plaza has to be the bright thing in a dark scene,
+       * or there is nothing to read the code against. */
+      ground: '#d9dcec', paving: '#c9cee2', rim: '#9aa1bd',
+      ink: '#2a3a52', bark: '#4a3a5e',
+      grass: ['#3d6b5c', '#4a7d69', '#5a8f79'],
+      moduleGreen: '#1d4438', moduleBlade: '#2f6b53',
       leaf: ['#ff9ec2', '#ffc0d8', '#e87ba8', '#ffd6e6', '#c96690'],
+      leafShape: 'blossom',
       /* Warm slow drifting specks read as fireflies under a blossom tree. */
       weather: { kind: 'motes', count: 30 },
-      defaultAccent: 0, sun: 0, stars: 1.0, bloom: 0.52, vignette: 0.28 }
+      defaultAccent: 0, sun: 0, stars: 1.0, bloom: 0.52, vignette: 0.16 }
   ];
 
   /* Panel chrome, lifted straight from the site's tokens: --bg-alt for the
