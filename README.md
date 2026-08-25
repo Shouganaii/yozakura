@@ -49,7 +49,7 @@ light/dark pair.
 
 ## The garden
 
-Four seasons, each owning its sky, its ground, its foliage and the weather
+Five seasons, each owning its sky, its ground, its foliage and the weather
 falling through it:
 
 | | Sky | Weather |
@@ -58,6 +58,11 @@ falling through it:
 | Fall | `#e09a4c` → `#f8e3c2` | leaves tumbling down |
 | Rainy | `#47555f` → `#98a9b4` | rain streaks, ripples on the plaza |
 | Winter | `#8fabc4` → `#e2edf4` | snow, in still air |
+| Night | `#0c0819` → `#241243` | fireflies, stars, blossom lit from within |
+
+Night is appended rather than slotted in beside the others on purpose: the sky
+index is part of every share link, so inserting it mid-list would silently
+re-point codes that already exist.
 
 Each weather has its own motion, not just its own sprite. Rain falls hard and
 nearly straight, drawn as streaks rather than drops — a falling drop reads as a
@@ -89,6 +94,24 @@ establishing shot keeps a frame alive without calling attention to itself.
 It fades out as the code takes over, and it yields: touch the scene and the
 drift drops to nothing, then eases back about four seconds after you let go, so
 it never fights you for the camera.
+
+### Limbs
+
+Branches aren't strokes. Each is drawn three times across its own width — a
+shadowed base, the bark itself, and a narrow highlight offset toward the light —
+which is all it takes to read as a round branch. They taper toward the tip, and
+the trunk carries bark plates where there's width enough to see them.
+
+Done as three passes over every limb rather than three fills per limb: a
+`fillStyle` assignment reparses the colour string, and doing that ~300 times a
+frame cost more than all the geometry put together.
+
+### Leaves letting go
+
+A leaf detaches somewhere in the canopy, tumbles down, comes to rest on the
+stone and fades out; then another one goes. Continuous, and slow enough to
+notice without ever demanding attention. Resting leaves are drawn flat on the
+paving alongside the static scatter, and all of them clear as the code sharpens.
 
 ### Weather
 
@@ -308,10 +331,21 @@ fading blossom costs a handful of fills. Each leaf is a four-point pointed oval
 — the same vertex count as the rectangle it replaced, but it reads as blossom
 instead of confetti and fills fewer pixels.
 
-Measured worst frame, 3,600 leaves plus weather: **3.9 ms** on a 49×49 code,
-including the update step — still well inside a 60 fps budget. An earlier
-1,456-leaf version using rectangles cost 7.3 ms, because fill area, not object
-count, was the bottleneck.
+Measured worst frame on Night — the heaviest season, with stars, bloom and
+3,600 leaves — is **1.5 ms**, best-of-three after a long warm-up.
+
+Measure with warm-up and take the best of several runs. Cold samples in this
+scene run 4–10× slow and will send you chasing costs that aren't there; a
+"bloom is expensive" reading that disappears when you remove the vignette
+instead is warm-up drift, not attribution.
+
+**Load**: the webfont stylesheet is loaded without blocking first paint
+(`media="print"`, swapped on load). That alone took `DOMContentLoaded` from
+436 ms to about 35 ms — the actual init work, building a 3,600-leaf tree and
+encoding the code, is only ~50 ms of it.
+
+The reveal itself runs **1.8 s**, down from 2.9 s, with the phases front-loaded
+so the code arrives sooner.
 
 Because petals never stop falling there is no idle frame to skip, so the loop
 runs continuously; the settled state costs about 0.2 ms, and the loop is

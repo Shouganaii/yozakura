@@ -79,7 +79,18 @@
        * code is a leaf, so the tree can never actually shed them all. */
       leaf: ['#eef5fb', '#ffffff', '#cfdeea', '#f7fbfe', '#b9cfe0'],
       weather: { kind: 'snow', count: 96 },
-      defaultAccent: 5, sun: 0.25, stars: 0, bloom: 0.22, vignette: 0.10 }
+      defaultAccent: 5, sun: 0.25, stars: 0, bloom: 0.22, vignette: 0.10 },
+
+    { id: 'night', label: 'Night',
+      skyTop: '#0c0819', skyBottom: '#241243', sky: '#150d2c',
+      paper: '#ffffff', stage: '#150d2c',
+      ground: '#1a1030', paving: '#221540', rim: '#120b24',
+      ink: '#07040f', bark: '#3d2f4f',
+      grass: ['#24413c', '#2f5148', '#3b6455'],
+      leaf: ['#ff9ec2', '#ffc0d8', '#e87ba8', '#ffd6e6', '#c96690'],
+      /* Warm slow drifting specks read as fireflies under a blossom tree. */
+      weather: { kind: 'motes', count: 30 },
+      defaultAccent: 0, sun: 0, stars: 1.0, bloom: 0.52, vignette: 0.28 }
   ];
 
   /* Panel chrome, lifted straight from the site's tokens: --bg-alt for the

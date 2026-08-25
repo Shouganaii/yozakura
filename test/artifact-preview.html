@@ -221,8 +221,8 @@ body {
 .row { display: flex; gap: 8px; align-items: flex-end; }
 .row-skies {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 7px;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
 }
 .row-accents { flex-wrap: wrap; align-items: center; }
 .row-accents { gap: 10px; justify-content: center; padding-top: 2px; }
@@ -618,6 +618,10 @@ select {
     <button class="chip" type="button" data-sky="winter" aria-pressed="false">
       <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 2.5v19M3.6 7.25l16.8 9.5M20.4 7.25 3.6 16.75"/><path d="M12 6.6 9.6 4.2M12 6.6l2.4-2.4M12 17.4l-2.4 2.4M12 17.4l2.4 2.4"/></g></svg>
       Winter
+    </button>
+    <button class="chip" type="button" data-sky="night" aria-pressed="false">
+      <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 14.6A8 8 0 0 1 9.4 4.5a8 8 0 1 0 10.1 10.1z"/></g></svg>
+      Night
     </button>
   </div>
 
@@ -1329,14 +1333,14 @@ select {
   /* --------------------------------------------------------------- timeline */
   /* All phase boundaries live here so the choreography is easy to retune. */
   const T = {
-    revealDuration: 2900,
-    regrowDuration: 2400,
-    gust:    [0.00, 0.18],  // wind ramps, canopy shivers
-    flight:  [0.06, 0.62],  // leaves detach and fly to their modules
-    sink:    [0.40, 0.58],  // trunk withdraws into the ground
-    tilt:    [0.52, 0.86],  // camera swings to straight-down
-    flatten: [0.62, 0.90],  // blocks collapse to paint
-    lock:    [0.86, 1.00]   // contrast snaps, scan-line sweeps
+    revealDuration: 1800,
+    regrowDuration: 1400,
+    gust:    [0.00, 0.15],  // wind ramps, canopy shivers
+    flight:  [0.04, 0.56],  // leaves detach and fly to their modules
+    sink:    [0.34, 0.52],  // trunk withdraws into the ground
+    tilt:    [0.44, 0.78],  // camera lifts to look across the plaza
+    flatten: [0.52, 0.82],  // blocks collapse to paint
+    lock:    [0.78, 1.00]   // contrast snaps, the flare goes off
   };
 
   /* ------------------------------------------------------------------ Scene */
@@ -1695,7 +1699,9 @@ select {
 
       const grow = (x, y, z, dx, dy, dz, len, thick, depth) => {
         const ex = x + dx * len, ey = y + dy * len, ez = z + dz * len;
-        branches.push({ x1: x, y1: y, z1: z, x2: ex, y2: ey, z2: ez, thick, depth });
+        /* Limbs taper toward their tip, and harder the further out they are. */
+        branches.push({ x1: x, y1: y, z1: z, x2: ex, y2: ey, z2: ez,
+                        thick, thick2: thick * (depth >= 3 ? 0.38 : 0.64), depth });
         if (depth >= 4 || len < n * 0.045) { tips.push({ x: ex, y: ey, z: ez, spread: len * 1.25 }); return; }
         /* Interior nodes carry foliage too — without them the crown reads as a
          * hollow ring once the tips are pushed outward below. */
@@ -1883,11 +1889,12 @@ select {
 
       /* Petals that have already let go, drifting down on a loop. They are
        * what keeps the scene alive while nobody is touching it. */
-      this.motes = Array.from({ length: 46 }, () => ({
+      this.motes = Array.from({ length: 40 }, () => ({
         x: rand() * n, y: rand() * n, z: n * (0.05 + rand() * 0.62),
-        vx: (rand() - 0.5) * 0.5, vz: -0.055 - rand() * 0.09,
-        size: 0.38 + rand() * 0.34, phase: rand() * TAU, tone: rand(),
-        spin: rand() * TAU, spinRate: (rand() - 0.5) * 3.2
+        fall: 0.9 + rand() * 1.5,
+        size: 0.34 + rand() * 0.32, phase: rand() * TAU, tone: rand(),
+        spin: rand() * TAU, spinRate: (rand() - 0.5) * 3.2,
+        rest: 0, fade: 1
       }));
     }
 
@@ -1955,7 +1962,7 @@ select {
       if (this.state === 'revealing') {
         this.time += dt;
         const p = clamp(this.time / T.revealDuration, 0, 1);
-        if (this.progress < 0.62 && p >= 0.62) this.shockwave = 0;
+        if (this.progress < T.flatten[0] && p >= T.flatten[0]) this.shockwave = 0;
         this.progress = p;
         if (p >= 1) { this.progress = 1; this._setState('revealed'); }
       } else if (this.state === 'regrowing') {
@@ -1990,11 +1997,23 @@ select {
       this.parallax.x = lerp(this.parallax.x, this.parallax.tx, 1 - Math.pow(0.004, dt / 1000));
       this.parallax.y = lerp(this.parallax.y, this.parallax.ty, 1 - Math.pow(0.004, dt / 1000));
 
+      /* A leaf lets go somewhere in the canopy, tumbles down, comes to rest on
+       * the stone and fades out; then another one goes. Continuous, and slow
+       * enough to notice without ever demanding attention. */
+      const shedSecs = dt / 1000;
+      const shedNow = performance.now() / 1000;
       for (const m of this.motes) {
-        m.x += m.vx * dt / 1000 * (0.4 + this.wind);
-        m.z += m.vz * dt / 1000;
-        if (m.z < 0) { m.z = this.n * 0.6; m.x = Math.random() * this.n; m.y = Math.random() * this.n; }
-        if (m.x > this.n + 2) m.x = -2;
+        if (m.rest > 0) {
+          m.rest -= shedSecs;
+          m.fade = clamp(m.rest / 1.8, 0, 1);
+          if (m.rest <= 0) this._shed(m);
+          continue;
+        }
+        m.z -= m.fall * shedSecs;
+        m.x += (this.wind * 0.22 + Math.sin(shedNow * 1.2 + m.phase) * 0.45) * shedSecs;
+        m.y += Math.cos(shedNow * 0.85 + m.phase) * 0.3 * shedSecs;
+        m.spin += m.spinRate * shedSecs;
+        if (m.z <= 0) { m.z = 0; m.rest = 2.6; m.fade = 1; }
       }
 
       if (!this.reducedMotion) this._updateAmbient(dt);
@@ -2008,6 +2027,16 @@ select {
         Math.abs(this.parallax.x - this.parallax.tx) < 0.2 &&
         this.shockwave < 0);
       if (settled) this.stop();
+    }
+
+    /* Send a shed leaf back up into the canopy to fall again. */
+    _shed(m) {
+      const src = this.petals && this.petals.length
+        ? this.petals[(Math.random() * this.petals.length) | 0] : null;
+      if (src) { m.x = src.hx; m.y = src.hy; m.z = src.hz; }
+      else { m.x = Math.random() * this.n; m.y = Math.random() * this.n; m.z = this.n * 0.5; }
+      m.rest = 0;
+      m.fade = 1;
     }
 
     /* A blossom petal: hangs on the branch, then is torn off by the gust and
@@ -2240,10 +2269,18 @@ select {
       /* ---- paving grid + risen modules ---- */
       this._drawGround(g, P, b, paving, ink, blockH, flatten, inkT);
 
-      /* Fallen leaves sit on the paving, fading out as the code sharpens. */
+      /* Leaves lying on the paving, fading out as the code sharpens: the
+       * static scatter, plus whatever has just come down and not yet gone. */
       if (!onCard && inkT < 0.98 && this.fallen) {
+        const resting = this.fallen.slice();
+        for (const m of this.motes) {
+          if (m.rest > 0) {
+            resting.push({ x: m.x, y: m.y, rot: m.spin, size: m.size,
+                           colour: m.colour, fade: m.fade });
+          }
+        }
         const buckets = new Map();
-        for (const f of this.fallen) {
+        for (const f of resting) {
           let arr = buckets.get(f.colour);
           if (!arr) { arr = []; buckets.set(f.colour, arr); }
           arr.push(f);
@@ -2253,8 +2290,10 @@ select {
           g.fillStyle = colour;
           g.beginPath();
           for (const f of arr) {
+            if (f.fade !== undefined && f.fade < 0.02) continue;
+            const k = f.fade === undefined ? 1 : f.fade;
             const cs = Math.cos(f.rot), sn = Math.sin(f.rot);
-            const ax = f.size, ay = f.size * 0.5;
+            const ax = f.size * k, ay = f.size * 0.5 * k;
             /* Corners in grid space, so the projection foreshortens them the
              * way anything lying flat on the ground would be. */
             const pts = [[-ax, 0], [0, -ay], [ax, 0], [0, ay]];
@@ -2435,34 +2474,106 @@ select {
             a1: P(br.x1 + sway * w1 * w1, br.y1 + sway * w1 * w1 * 0.5, br.z1 * shrink),
             a2: P(br.x2 + sway * w2 * w2, br.y2 + sway * w2 * w2 * 0.5, br.z2 * shrink),
             thick: br.thick * fit.zoom * shrink,
+            thick2: br.thick2 * fit.zoom * shrink,
             depth: br.depth
           });
         }
         segs.sort((a, c) => a.d - c.d);
-        g.lineCap = 'round';
-        let lastStyle = null, lastWidth = -1;
-        for (const s of segs) {
-          const style = s.depth === 0 ? th.bark : shade(th.bark, 0.08 * s.depth);
-          const width = Math.max(0.8, s.thick);
-          if (style !== lastStyle) { g.strokeStyle = style; lastStyle = style; }
-          if (width !== lastWidth) { g.lineWidth = width; lastWidth = width; }
+
+        /* Each limb is drawn three times across its own width — a shadowed
+         * base, the bark itself, and a narrow highlight offset toward the
+         * light. Three tapered slivers is all it takes to read as a round
+         * branch instead of a drawn line.
+         *
+         * Done as three passes over every limb rather than three fills per
+         * limb: a fillStyle assignment reparses the colour string, and doing
+         * that ~300 times a frame cost more than all the geometry put
+         * together. */
+        const LX = -0.55, LY = -0.84;          // light comes from up and to the left
+        const bark = th.bark;
+        if (this._barkKey !== bark) {
+          this._barkKey = bark;
+          this._barkDark = shade(bark, -0.34);
+          this._barkLit = shade(bark, 0.26);
+          this._barkBody = [0, 1, 2, 3, 4].map((d) => (d === 0 ? bark : shade(bark, 0.06 * d)));
+        }
+
+        const limbPath = (s, widthK, offK) => {
+          const dx = s.a2[0] - s.a1[0], dy = s.a2[1] - s.a1[1];
+          const len = Math.hypot(dx, dy) || 1;
+          let px = -dy / len, py = dx / len;
+          if (px * LX + py * LY < 0) { px = -px; py = -py; }
+          const w1 = Math.max(0.5, s.thick * widthK) * 0.5;
+          const w2 = Math.max(0.35, s.thick2 * widthK) * 0.5;
+          const o1 = s.thick * offK * 0.5, o2 = s.thick2 * offK * 0.5;
+          g.moveTo(s.a1[0] + px * (o1 - w1), s.a1[1] + py * (o1 - w1));
+          g.lineTo(s.a2[0] + px * (o2 - w2), s.a2[1] + py * (o2 - w2));
+          g.lineTo(s.a2[0] + px * (o2 + w2), s.a2[1] + py * (o2 + w2));
+          g.lineTo(s.a1[0] + px * (o1 + w1), s.a1[1] + py * (o1 + w1));
+          g.closePath();
+        };
+
+        const limbPass = (widthK, offK, style, byDepth) => {
+          if (!byDepth) {
+            g.fillStyle = style;
+            for (let i = 0; i < segs.length; i += 40) {
+              const end2 = Math.min(i + 40, segs.length);
+              g.beginPath();
+              for (let k = i; k < end2; k++) limbPath(segs[k], widthK, offK);
+              g.fill();
+            }
+            return;
+          }
+          for (let d = 0; d <= 4; d++) {
+            g.fillStyle = this._barkBody[d];
+            g.beginPath();
+            let any = false;
+            for (const sg of segs) {
+              if (sg.depth !== d) continue;
+              limbPath(sg, widthK, offK);
+              any = true;
+            }
+            if (any) g.fill();
+          }
+        };
+
+        limbPass(1.0, 0, this._barkDark, false);
+        limbPass(0.72, 0.20, null, true);
+        limbPass(0.26, 0.40, this._barkLit, false);
+
+        /* Bark plates, only on the trunk where there is width enough to see. */
+        for (const sg of segs) {
+          if (sg.depth !== 0 || sg.thick <= 5) continue;
+          const dx = sg.a2[0] - sg.a1[0], dy = sg.a2[1] - sg.a1[1];
+          const len = Math.hypot(dx, dy) || 1;
+          const px = -dy / len, py = dx / len;
+          g.strokeStyle = shade(bark, -0.42);
+          g.lineWidth = Math.max(0.7, sg.thick * 0.07);
           g.beginPath();
-          g.moveTo(s.a1[0], s.a1[1]);
-          g.lineTo(s.a2[0], s.a2[1]);
+          const plates = Math.max(4, Math.round(len / (sg.thick * 1.15)));
+          for (let k = 1; k < plates; k++) {
+            const t = k / plates;
+            const w = (sg.thick + (sg.thick2 - sg.thick) * t) * 0.30;
+            const cxp = sg.a1[0] + dx * t, cyp = sg.a1[1] + dy * t;
+            const skew = ((k % 2) ? 0.22 : -0.22) * w;
+            g.moveTo(cxp + px * -w + dx / len * skew, cyp + py * -w + dy / len * skew);
+            g.lineTo(cxp + px * w * 0.55 + dx / len * skew, cyp + py * w * 0.55 + dy / len * skew);
+          }
           g.stroke();
         }
       }
 
       drawLeaves(front);
 
-      /* Petals already on their way down, looping forever. */
+      /* Leaves on their way down. The ones already resting are drawn flat on
+       * the stone further up, fading, so the fall has somewhere to end. */
       if (flatten < 1) {
-        g.globalAlpha = (1 - flatten) * 0.8;
+        g.globalAlpha = (1 - flatten) * 0.85;
         const drifting = [];
         for (const m of this.motes) {
+          if (m.rest > 0) continue;
           drifting.push({ c: P(m.x, m.y, m.z), colour: m.colour,
-                          spin: m.spin + now / 1000 * m.spinRate,
-                          r: m.size * fit.zoom * 0.5, alpha: 1 });
+                          spin: m.spin, r: m.size * fit.zoom * 0.5, alpha: 1 });
         }
         drawLeaves(drifting);
         g.globalAlpha = 1;
@@ -2471,16 +2582,33 @@ select {
       /* Petals in front, fading out as the code takes over the frame. */
       if (!this.reducedMotion) this._drawAmbient(g, this.ambientFront, 0.85 * (1 - lockT), this.ambCount.front);
 
-      /* Vignette, which burns off with the rest of the atmosphere so the
-       * finished code sits on clean white. */
-      const vig = (th.vignette || 0) * (1 - lockT * 0.7);
+      /* Vignette. It has to key off the code forming, not off the scan view:
+       * left at full strength over the finished plaza it pulled white down to
+       * about 204 and cost enough contrast to stop the code decoding outright.
+       * The clear centre is widened for the same reason. */
+      const vig = (th.vignette || 0) * (1 - inkT * 0.75) * (1 - lockT);
       if (vig > 0.005) {
         const r = Math.hypot(this.vw, this.vh) * 0.62;
-        const shade2 = g.createRadialGradient(this.vw / 2, this.vh * 0.46, r * 0.32,
+        const shade2 = g.createRadialGradient(this.vw / 2, this.vh * 0.46, r * 0.55,
                                               this.vw / 2, this.vh * 0.46, r);
         shade2.addColorStop(0, 'rgba(0,0,0,0)');
         shade2.addColorStop(1, 'rgba(0,0,0,' + vig.toFixed(3) + ')');
         g.fillStyle = shade2;
+        g.fillRect(0, 0, this.vw, this.vh);
+      }
+
+      /* A flare off the plaza as the code locks in — the beat the whole
+       * sequence has been building to gets a bloom of its own. */
+      const flare = Math.max(0, 1 - Math.abs(p - T.flatten[0]) / 0.18);
+      if (flare > 0.01 && !onCard) {
+        const fc = P(n / 2, n / 2, 0);
+        const rad = Math.max(this.vw, this.vh) * (0.35 + 0.55 * (1 - flare));
+        const burst = g.createRadialGradient(fc[0], fc[1], 0, fc[0], fc[1], rad);
+        const e = flare * flare;
+        burst.addColorStop(0, hexToRgba(th.accent, 0.42 * e));
+        burst.addColorStop(0.45, hexToRgba(th.accent, 0.16 * e));
+        burst.addColorStop(1, hexToRgba(th.accent, 0));
+        g.fillStyle = burst;
         g.fillRect(0, 0, this.vw, this.vh);
       }
 
@@ -3011,7 +3139,18 @@ select {
        * code is a leaf, so the tree can never actually shed them all. */
       leaf: ['#eef5fb', '#ffffff', '#cfdeea', '#f7fbfe', '#b9cfe0'],
       weather: { kind: 'snow', count: 96 },
-      defaultAccent: 5, sun: 0.25, stars: 0, bloom: 0.22, vignette: 0.10 }
+      defaultAccent: 5, sun: 0.25, stars: 0, bloom: 0.22, vignette: 0.10 },
+
+    { id: 'night', label: 'Night',
+      skyTop: '#0c0819', skyBottom: '#241243', sky: '#150d2c',
+      paper: '#ffffff', stage: '#150d2c',
+      ground: '#1a1030', paving: '#221540', rim: '#120b24',
+      ink: '#07040f', bark: '#3d2f4f',
+      grass: ['#24413c', '#2f5148', '#3b6455'],
+      leaf: ['#ff9ec2', '#ffc0d8', '#e87ba8', '#ffd6e6', '#c96690'],
+      /* Warm slow drifting specks read as fireflies under a blossom tree. */
+      weather: { kind: 'motes', count: 30 },
+      defaultAccent: 0, sun: 0, stars: 1.0, bloom: 0.52, vignette: 0.28 }
   ];
 
   /* Panel chrome, lifted straight from the site's tokens: --bg-alt for the

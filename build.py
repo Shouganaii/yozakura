@@ -50,10 +50,10 @@ def to_artifact(html):
 
     # <head> is stripped along with its font <link>, so the webfont is pulled in
     # as an @import instead — it has to lead the stylesheet to be honoured.
-    fonts = re.findall(r'<link rel="stylesheet" href="(https://fonts\.googleapis\.com/[^"]+)">', html)
+    fonts = re.findall(r'<link[^>]*href="(https://fonts\.googleapis\.com/[^"]+)"[^>]*>', html)
     # No entity-escaping: <style> is raw text in HTML, so "&amp;" would survive
     # literally into the URL and break it.
-    imports = "".join('@import url("%s");\n' % href for href in fonts)
+    imports = "".join('@import url("%s");\n' % href for href in dict.fromkeys(fonts))
     return "<title>%s</title>\n<style>\n%s%s</style>\n%s" % (
         title, imports, style, body.strip())
 
