@@ -8,7 +8,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-PROJECT="${1:-yozakura}"
+PROJECT="${1:-yozakura-qr-tree}"
 
 python3 build.py
 

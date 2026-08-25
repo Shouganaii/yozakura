@@ -390,6 +390,12 @@ wrangler login          # once
 ./deploy.sh             # build and publish
 ```
 
+Live at **https://yozakura-qr-tree.pages.dev** — that is the Pages project name,
+and it is baked into `deploy.sh` as the default. Pages projects cannot be
+renamed in place; changing it means creating a new project, deploying, and
+deleting the old one, which breaks every link already generated against the old
+host.
+
 Then attach `yozakura.nextlvl.win` to the project as a custom domain. Because
 the zone is already on Cloudflare, the DNS record is created for you.
 
