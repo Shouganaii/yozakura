@@ -381,15 +381,25 @@ independent check rather than the encoder grading its own homework.
 
 ## Putting it on nextlvl.win
 
-Copy the built page into a folder on the site:
+nextlvl.win is a Cloudflare Pages site with an SPA fallback — every unknown
+path returns the homepage — so a subpath cannot be added without redeploying
+that site. Yozakura therefore ships as its own Pages project on a subdomain:
 
 ```bash
-python3 build.py
-cp dist/index.html /path/to/nextlvl.win/yozakura/index.html
+wrangler login          # once
+./deploy.sh             # build and publish
 ```
 
-That is the whole deploy — one file, no server, no build step on the host. The
-only network request it makes is the Google Fonts stylesheet.
+Then attach `yozakura.nextlvl.win` to the project as a custom domain. Because
+the zone is already on Cloudflare, the DNS record is created for you.
+
+`deploy.sh` publishes a directory containing only the page itself, so the
+Artifacts fragment and the duplicate build in `dist/` are never served. It is
+one file, no server, no build step on the host — the only network request it
+makes is the Google Fonts stylesheet.
+
+To put it on a path of the main site instead, copy `dist/index.html` into that
+site's source at `yozakura/index.html` and deploy it the way you normally do.
 
 The link base defaults to wherever the page is served from, so once it is at
 `https://nextlvl.win/yozakura/` every link it makes looks like:
