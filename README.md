@@ -379,6 +379,15 @@ animation settles.
 Requires a Chromium-based browser — `BarcodeDetector` is what makes this an
 independent check rather than the encoder grading its own homework.
 
+## Licence
+
+MIT — see `LICENSE`. Swap it for whatever you prefer; nothing here constrains
+the choice.
+
+Credits and trademark notices live in `NOTICE.md`, including the QR Code
+trademark, the specification the encoder is built against, and the concept this
+grew out of. Worth a read before making the repository public.
+
 ## Browser support
 
 Modern Chrome, Safari, Firefox and Edge. `prefers-reduced-motion` is honoured
