@@ -43,13 +43,13 @@
    * the way toward your pick and owns the UI outright. */
   const SKIES = [
     { id: 'hanami', label: 'Hanami',
-      skyTop: '#0a0616', skyBottom: '#231539', sky: '#150d2c',
+      skyTop: '#04101f', skyBottom: '#16344e', sky: '#0c2237',
       paper: '#ffffff',
-      moonFace: '#f6efe2', moonLimb: '#c9b9a0', moonGlow: '#ffe9c4',
-      maria: '#cbbda6', moduleInk: '#241a2e',
-      branch: '#3b2a3d',
-      leaf: ['#ff9ec2', '#ffc0d8', '#e87ba8', '#ffd6e6', '#c96690'],
-      defaultAccent: 0, stars: 1.0, halo: 0.5, vignette: 0.3 },
+      moonFace: '#edf4fb', moonLimb: '#a7bed3', moonGlow: '#b8dcff',
+      maria: '#b7c9d9', moduleInk: '#1d2436',
+      branch: '#4a3730',
+      leaf: ['#ffb3cd', '#ffd8e4', '#f18fb2', '#fff0f5', '#d97fa2'],
+      defaultAccent: 0, stars: 1.0, halo: 0.74, vignette: 0.3 },
 
     { id: 'frost', label: 'Frost',
       skyTop: '#05080f', skyBottom: '#16243a', sky: '#0d1526',

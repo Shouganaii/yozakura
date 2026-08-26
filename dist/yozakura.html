@@ -1407,6 +1407,7 @@ select {
     flight:   [0.04, 0.62],   // blossom crosses to the moon and settles
     withdraw: [0.34, 0.70],   // the emptied branch draws back off frame
     ink:      [0.30, 0.88],   // the face brightens, the modules go dark
+    push:     [0.06, 0.74],   // the camera leaves the tree and closes on the moon
     lock:     [0.80, 1.00]    // halo swells, a light sweeps the face
   };
 
@@ -1457,10 +1458,16 @@ select {
      * corners have to stay inside the disc or the quiet zone spills onto the
      * night sky and stops being a quiet zone — hence 1.28r rather than the
      * 1.41r that would touch the limb exactly. */
-    _moon() {
-      const r = Math.min(this.vw * 0.46, this.vh * 0.36);
-      const cx = this.vw / 2 + this.drift.x * 0.35;
-      const cy = this.vh * 0.44 + this.drift.y * 0.35;
+    _moon(push) {
+      const t = push === undefined ? 0 : push;
+      const s = Math.min(this.vw, this.vh);
+      /* The moon holds the middle of the frame throughout — it has to, since
+       * the code is inscribed in it and a phone has to read it. The reveal only
+       * closes the last little distance as the blossom parts. */
+      const full = Math.min(this.vw * 0.46, this.vh * 0.36);
+      const r = lerp(full * 0.84, full, t);
+      const cx = lerp(this.vw * 0.53, this.vw / 2, t) + this.drift.x * 0.35 * (1 - t * 0.6);
+      const cy = lerp(this.vh * 0.42, this.vh * 0.46, t) + this.drift.y * 0.35 * (1 - t * 0.6);
       const side = r * 1.28;
       const n = this.qr ? this.qr.size : 25;
       const quiet = this.opts.quietZone;
@@ -1519,15 +1526,15 @@ select {
         /* Each limb is laid down as a run of short segments that turn a little
          * at every step, so it arrives as a curve. Drawn as one straight quad
          * it read as a chopstick, and a node of them as a folding fan. */
-        const SEG = depth === 0 ? 8 : 5;
-        const curl = (rand() - 0.5) * 0.9;
-        const droop = (0.16 + depth * 0.06) / SEG;
-        const endThick = thick * (depth === 0 ? 0.74 : 0.62);
+        const SEG = 5;
+        const curl = (rand() - 0.5) * 1.45;
+        const droop = (0.12 + depth * 0.05) / SEG;
+        const endThick = thick * 0.64;
         let px = x, py = y, ux = dx, uy = dy;
         for (let k = 0; k < SEG; k++) {
           const a = curl / SEG;
-          let rx = ux * Math.cos(a) - uy * Math.sin(a);
-          let ry = ux * Math.sin(a) + uy * Math.cos(a) + droop;
+          const rx = ux * Math.cos(a) - uy * Math.sin(a);
+          const ry = ux * Math.sin(a) + uy * Math.cos(a) + droop;
           const m0 = Math.hypot(rx, ry) || 1;
           ux = rx / m0; uy = ry / m0;
           const qx = px + ux * (len / SEG), qy = py + uy * (len / SEG);
@@ -1539,24 +1546,75 @@ select {
         /* Spread is how far blossom scatters from a node, and it has to stay
          * small. At a fraction of the branch length it threw blossom across a
          * quarter of the viewport and the canopy detached from the bough. */
-        if (depth >= 3 || len < 0.05) { tips.push({ x: px, y: py, spread: 0.028 }); return; }
+        if (depth >= 4 || len < 0.035) { tips.push({ x: px, y: py, spread: 0.028 }); return; }
         tips.push({ x: px, y: py, spread: 0.020 });
-        /* Two kids at most, and often one — three at every node is what built
-         * the fan. */
-        const kids = depth === 0 ? 2 : (rand() < 0.6 ? 2 : 1);
+        const kids = rand() < 0.72 ? 2 : 1;
         for (let i = 0; i < kids; i++) {
-          const turn = (i === 0 ? -1 : 1) * (0.22 + rand() * 0.55) + (rand() - 0.5) * 0.2;
+          const turn = (i === 0 ? -1 : 1) * (0.20 + rand() * 0.5) + (rand() - 0.5) * 0.2;
           const nx = ux * Math.cos(turn) - uy * Math.sin(turn);
-          const ny = ux * Math.sin(turn) + uy * Math.cos(turn) + 0.14;
+          const ny = ux * Math.sin(turn) + uy * Math.cos(turn) + 0.10;
           const m = Math.hypot(nx, ny) || 1;
-          grow(px, py, nx / m, ny / m, len * (0.58 + rand() * 0.18), thick * 0.66, depth + 1);
+          grow(px, py, nx / m, ny / m, len * (0.60 + rand() * 0.18), thick * 0.66, depth + 1);
         }
       };
 
-      /* In from the top-left, arcing across the upper face of the moon. */
-      this.entry = { x: -0.18, y: 0.04, dx: 0.9, dy: 0.34 };
-      grow(this.entry.x, this.entry.y, this.entry.dx, this.entry.dy, 0.4, 0.055, 0);
+      /* A trunk running the full height of the near edge, bare wood, flagged so
+       * no blossom is hung on it. This is the thing that makes the frame read as
+       * standing under a tree rather than looking at one. */
+      const trunk = [];
+      {
+        let px = 0.985, py = 1.16, ux = -0.03, uy = -1;
+        const m0 = Math.hypot(ux, uy); ux /= m0; uy /= m0;
+        const SEG = 20, len = 1.5, thick = 0.082, endThick = 0.036;
+        const bow = -0.13;
+        for (let k = 0; k < SEG; k++) {
+          /* A total bow shared across the segments, plus a little wander. Dead
+           * straight reads as a fence post; a per-step constant accumulates and
+           * swings the whole trunk off frame. */
+          const a = bow / SEG + (rand() - 0.5) * 0.055;
+          const rx = ux * Math.cos(a) - uy * Math.sin(a);
+          const ry = ux * Math.sin(a) + uy * Math.cos(a);
+          const mm = Math.hypot(rx, ry) || 1; ux = rx / mm; uy = ry / mm;
+          const qx = px + ux * (len / SEG), qy = py + uy * (len / SEG);
+          /* A continuous swell along the trunk, so the silhouette is not two
+           * parallel rules. Phase is shared between the two ends of a segment
+           * so neighbours still meet flush. */
+          const gnarl = (t) => 1 + 0.085 * Math.sin(t * 5.1 + 0.7) + 0.045 * Math.sin(t * 11.3);
+          trunk.push({ x1: px, y1: py, x2: qx, y2: qy,
+                       thick:  lerp(thick, endThick, k / SEG) * gnarl(k),
+                       thick2: lerp(thick, endThick, (k + 1) / SEG) * gnarl(k + 1),
+                       depth: 0, trunk: true });
+          px = qx; py = qy;
+        }
+        for (const t of trunk) limbs.push(t);
+      }
 
+      /* Boughs reaching in from the trunk and from three edges, so the moon is
+       * veiled on every side but the middle. Aimed to cross the disc without
+       * converging on its centre — the code has to resolve there. */
+      const at = (f) => trunk[Math.min(trunk.length - 1, Math.round(f * (trunk.length - 1)))];
+      const arms = [
+        { from: at(0.88), dx: -0.94, dy: -0.30, len: 0.20, thick: 0.021 },
+        { from: at(0.74), dx: -0.99, dy: -0.09, len: 0.17, thick: 0.018 },
+        { from: at(0.60), dx: -0.97, dy:  0.16, len: 0.21, thick: 0.020 },
+        { from: at(0.46), dx: -0.86, dy:  0.30, len: 0.14, thick: 0.015 },
+        { from: at(0.30), dx: -0.90, dy:  0.36, len: 0.17, thick: 0.017 },
+        /* in from the corners and edges, so blossom rings the frame and the
+         * middle of the disc stays clear enough to read */
+        { x: -0.10, y: -0.06, dx:  0.84, dy:  0.50, len: 0.22, thick: 0.020 },
+        { x: -0.10, y:  0.30, dx:  0.92, dy:  0.20, len: 0.16, thick: 0.016 },
+        { x: -0.10, y:  0.74, dx:  0.90, dy: -0.16, len: 0.16, thick: 0.016 },
+        { x: -0.10, y:  1.06, dx:  0.92, dy: -0.30, len: 0.22, thick: 0.019 },
+        { x:  0.42, y:  1.14, dx:  0.30, dy: -0.95, len: 0.15, thick: 0.015 }
+      ];
+      for (const a of arms) {
+        const x = a.from ? a.from.x2 : a.x, y = a.from ? a.from.y2 : a.y;
+        const m = Math.hypot(a.dx, a.dy);
+        grow(x, y, a.dx / m, a.dy / m, a.len, a.thick, 1);
+      }
+
+      /* Where blown blossom reckons "away" from — the foot of the trunk. */
+      this.entry = { x: 0.95, y: 1.0, dx: -0.9, dy: -0.2 };
       this.limbs = limbs;
       this.tips = tips;
     }
@@ -1585,7 +1643,7 @@ select {
        * along the wood is what makes a bough look laden. */
       const sites = [];
       for (const L of this.limbs) {
-        if (L.depth < 1) continue;
+        if (L.trunk) continue;
         const len = Math.hypot(L.x2 - L.x1, L.y2 - L.y1);
         /* Few sites, each wide. Many tight ones sleeved every limb in an even
          * tube of pink; sakura clusters in puffs with wood showing between. */
@@ -1602,15 +1660,31 @@ select {
         }
       }
       const site = (i) => sites[(i * 7 + 3) % sites.length];
-      const home = (s) => {
+      const place = (s) => {
         const a = rand() * TAU, rr = s.spread * Math.pow(rand(), 0.55);
         /* Flattened and biased downward — blossom hangs off a bough. */
         return { hx: s.x + Math.cos(a) * rr, hy: s.y + Math.sin(a) * rr * 0.62 + rr * 0.35 };
       };
 
+      /* Blossom veils the moon, but the middle of the disc is where the code has
+       * to read, so density falls off toward the centre instead of stopping at a
+       * hard edge — a clean hole would look cut out, and a full cover made the
+       * finder patterns unfindable. Fractions of the viewport, not of the moon,
+       * because homes are built once and have to survive a resize. */
+      const clearCentre = (x, y) => {
+        const dx = (x - 0.5) / 0.28, dy = (y - 0.44) / 0.23;
+        const d = Math.hypot(dx, dy);
+        return d >= 1 || rand() < 0.12 + 0.84 * d;
+      };
+      const home = (s, i) => {
+        let h = place(s);
+        for (let k = 0; k < 6 && !clearCentre(h.hx, h.hy); k++) h = place(site(i + k * 31));
+        return h;
+      };
+
       this.blossoms = targets.map((t, i) => {
         const s = site(i);
-        const h = home(s);
+        const h = home(s, i);
         /* Finder patterns settle first — they are what a scanner hunts for, and
          * watching the three corners arrive first reads as intent. */
         const priority = clamp(
@@ -1630,12 +1704,16 @@ select {
         };
       });
 
-      const extra = Math.round(clamp(1150 - targets.length, 160, 420));
-      this.filler = Array.from({ length: extra }, (_, i) => {
+      const extra = Math.round(clamp(2100 - targets.length, 850, 1500));
+      this.filler = [];
+      for (let i = 0; i < extra; i++) {
         const s = site(i * 3 + 1);
-        const h = home(s);
+        const h = place(s);
+        /* Filler carries no module, so it is simply dropped near the centre
+         * rather than re-sited — that is what thins the veil over the code. */
+        if (!clearCentre(h.hx, h.hy)) continue;
         const away = Math.atan2(h.hy - this.entry.y, h.hx - this.entry.x) + (rand() - 0.5) * 1.2;
-        return {
+        this.filler.push({
           hx: h.hx, hy: h.hy,
           dx: Math.cos(away) * (0.4 + rand() * 0.8),
           dy: Math.sin(away) * (0.3 + rand() * 0.7) + 0.35,
@@ -1644,8 +1722,8 @@ select {
           spin: rand() * TAU, spinRate: (rand() - 0.5) * 8,
           flutter: rand() * TAU,
           tone: rand()
-        };
-      });
+        });
+      }
     }
 
     _buildStars() {
@@ -1779,13 +1857,32 @@ select {
     }
 
     /* Where a blossom is, in viewport fractions. */
+    /* Branch and the blossom still on it are foreground. As the reveal runs they
+     * scale outward about the moon and fade, so the camera reads as pushing
+     * through the blossom rather than the tree sliding sideways — which is the
+     * only move that works when boughs come in from three different edges. */
+    _fg(push, withdraw) {
+      const m = this._moonCache;
+      const k = 1 + push * 0.30 + easeInCubic(withdraw) * 1.9;
+      return {
+        k,
+        fx: (v) => (m.cx + (v * this.vw - m.cx) * k) / this.vw,
+        fy: (v) => (m.cy + (v * this.vh - m.cy) * k) / this.vh,
+        /* All the way to zero. Stopping at 0.05 left the withdrawn branches as
+         * pale scratches across the finished code, right where a scanner is
+         * looking for clean contrast. */
+        alpha: 1 - smoothstep(withdraw)
+      };
+    }
+
     _blossomAt(b, p) {
       const flight = span(p, T.flight[0], T.flight[1]);
       const local = clamp((flight - b.delay) / b.dur, 0, 1);
-      const m = this._moonCache;
+      const m = this._moonCache, fg = this._fgCache;
+      const hx = fg ? fg.fx(b.hx) : b.hx, hy = fg ? fg.fy(b.hy) : b.hy;
       if (local <= 0) {
         const s = Math.sin(performance.now() / 620 + b.flutter) * this.wind * 0.004;
-        return { x: b.hx + s, y: b.hy + s * 0.5, t: 0, landed: false };
+        return { x: hx + s, y: hy + s * 0.5, t: 0, landed: false };
       }
       const tx = (m.x0 + (b.tx + 0.5) * m.module) / this.vw;
       const ty = (m.y0 + (b.ty + 0.5) * m.module) / this.vh;
@@ -1794,11 +1891,11 @@ select {
       /* A sideways bow on the path, so the swarm sweeps across rather than
        * converging in a straight line. */
       const bow = Math.sin(local * Math.PI) * b.arc;
-      const px = -(ty - b.hy), py = (tx - b.hx);
+      const px = -(ty - hy), py = (tx - hx);
       const pm = Math.hypot(px, py) || 1;
       return {
-        x: lerp(b.hx, tx, e) + (px / pm) * bow,
-        y: lerp(b.hy, ty, e) + (py / pm) * bow,
+        x: lerp(hx, tx, e) + (px / pm) * bow,
+        y: lerp(hy, ty, e) + (py / pm) * bow,
         t: local, landed: false
       };
     }
@@ -1806,12 +1903,14 @@ select {
     _fillerAt(f, p) {
       const blow = span(p, T.gust[0], 0.6);
       const t = clamp((blow - f.delay) / (1 - f.delay || 1), 0, 1);
+      const fg = this._fgCache;
+      const hx = fg ? fg.fx(f.hx) : f.hx, hy = fg ? fg.fy(f.hy) : f.hy;
       if (t <= 0) {
         const s = Math.sin(performance.now() / 640 + f.flutter) * this.wind * 0.004;
-        return { x: f.hx + s, y: f.hy + s * 0.5, alpha: 1 };
+        return { x: hx + s, y: hy + s * 0.5, alpha: 1 };
       }
       const e = easeInCubic(t);
-      return { x: f.hx + f.dx * e, y: f.hy + f.dy * e, alpha: 1 - t * t };
+      return { x: hx + f.dx * e, y: hy + f.dy * e, alpha: 1 - t * t };
     }
 
     _blossomColour(b, t) {
@@ -1867,10 +1966,12 @@ select {
       }
 
       g.setTransform(d, 0, 0, d, 0, 0);
-      const m = this._moonCache = this._moon();
+      const push = smoothstep(span(p, T.push[0], T.push[1]));
+      const m = this._moonCache = this._moon(push);
       const inkT = smoothstep(span(p, T.ink[0], T.ink[1]));
       const lock = span(p, T.lock[0], T.lock[1]);
       const withdraw = smoothstep(span(p, T.withdraw[0], T.withdraw[1]));
+      const fg = this._fgCache = this._fg(push, withdraw);
       const now = performance.now();
 
       /* ---- night sky ---- */
@@ -1936,13 +2037,11 @@ select {
       g.restore();
 
       /* ---- the branch, drawing back off frame as it empties ---- */
-      if (withdraw < 1) {
-        const slide = easeInCubic(withdraw);
-        const ox = -slide * 0.5 * this.vw, oy = -slide * 0.24 * this.vh;
+      if (fg.alpha > 0.02) {
         const sway = Math.sin(now / 900) * this.wind * 0.004;
-        g.globalAlpha = 1 - withdraw * 0.85;
-        const barkDark = shade(th.branch, -0.5);
-        const barkLit = shade(th.branch, 0.3);
+        g.globalAlpha = fg.alpha;
+        const barkDark = shade(th.branch, -0.55);
+        const barkLit = shade(th.branch, 0.26);
         const pass = (widthK, offK, style) => {
           g.fillStyle = style;
           for (let i = 0; i < this.limbs.length; i += 40) {
@@ -1950,18 +2049,24 @@ select {
             g.beginPath();
             for (let k = i; k < end; k++) {
               const L = this.limbs[k];
-              const ax = L.x1 * this.vw + ox + sway * this.vw * L.depth;
-              const ay = L.y1 * this.vh + oy;
-              const bx = L.x2 * this.vw + ox + sway * this.vw * (L.depth + 1);
-              const by = L.y2 * this.vh + oy;
+              let ax = fg.fx(L.x1) * this.vw + sway * this.vw * L.depth;
+              let ay = fg.fy(L.y1) * this.vh;
+              let bx = fg.fx(L.x2) * this.vw + sway * this.vw * (L.depth + 1);
+              let by = fg.fy(L.y2) * this.vh;
               const dx = bx - ax, dy = by - ay;
               const len = Math.hypot(dx, dy) || 1;
-              let px = -dy / len, py = dx / len;
-              if (px * -0.5 + py * -0.86 < 0) { px = -px; py = -py; }
-              const s = Math.min(this.vw, this.vh);
+              const ux = dx / len, uy = dy / len;
+              const px = -uy, py = ux;
+              const lit = px * -0.5 + py * -0.86;
+              const s = Math.min(this.vw, this.vh) * fg.k;
               const w1 = Math.max(0.6, L.thick * s * widthK) * 0.5;
               const w2 = Math.max(0.4, L.thick2 * s * widthK) * 0.5;
-              const o1 = L.thick * s * offK * 0.5, o2 = L.thick2 * s * offK * 0.5;
+              /* Run each quad a little past both ends. Butt-jointed trapezoids
+               * leave a hairline of sky at every turn, which striped the trunk
+               * with dark rungs. */
+              const cap = Math.max(w1, w2) * 0.6;
+              ax -= ux * cap; ay -= uy * cap; bx += ux * cap; by += uy * cap;
+              const o1 = L.thick * s * offK * 0.5 * lit, o2 = L.thick2 * s * offK * 0.5 * lit;
               g.moveTo(ax + px * (o1 - w1), ay + py * (o1 - w1));
               g.lineTo(bx + px * (o2 - w2), by + py * (o2 - w2));
               g.lineTo(bx + px * (o2 + w2), by + py * (o2 + w2));
@@ -1971,17 +2076,19 @@ select {
             g.fill();
           }
         };
-        pass(1.0, 0, barkDark);
-        pass(0.66, 0.2, th.branch);
-        pass(0.24, 0.4, barkLit);
+        /* Five steps rather than three: at three the trunk read as a pole
+         * painted in three stripes rather than a round thing catching light. */
+        pass(1.00, 0.00, barkDark);
+        pass(0.84, 0.10, mixHex(barkDark, th.branch, 0.55));
+        pass(0.63, 0.20, th.branch);
+        pass(0.41, 0.29, mixHex(th.branch, barkLit, 0.55));
+        pass(0.20, 0.36, barkLit);
         g.globalAlpha = 1;
       }
 
       /* ---- blossom: still on the branch, in flight, or landed ---- */
       const items = [];
       const s = Math.min(this.vw, this.vh);
-      const slide = easeInCubic(withdraw);
-      const bOx = -slide * 0.5 * this.vw, bOy = -slide * 0.24 * this.vh;
       const settled = this._settledTones();
       for (const b of this.blossoms) {
         const at = this._blossomAt(b, p);
@@ -2000,13 +2107,13 @@ select {
         }
         const onBranch = at.t <= 0;
         items.push({
-          x: at.x * this.vw + (onBranch ? bOx : 0),
-          y: at.y * this.vh + (onBranch ? bOy : 0),
-          r: b.size * s * 0.0135,
+          x: at.x * this.vw,
+          y: at.y * this.vh,
+          r: b.size * s * 0.017 * (onBranch ? fg.k : 1),
           colour: this._blossomColour(b, at.t),
           spin: b.spin + now / 1000 * b.spinRate,
           squash: 0.55 + 0.45 * Math.abs(Math.cos(b.flutter + now / 900)),
-          alpha: onBranch ? 1 - withdraw * 0.9 : 1
+          alpha: onBranch ? fg.alpha : 1
         });
       }
       for (const f of this.filler) {
@@ -2014,13 +2121,13 @@ select {
         if (at.alpha <= 0.02) continue;
         const onBranch = at.alpha >= 1;
         items.push({
-          x: at.x * this.vw + (onBranch ? bOx : 0),
-          y: at.y * this.vh + (onBranch ? bOy : 0),
-          r: f.size * s * 0.0125,
+          x: at.x * this.vw,
+          y: at.y * this.vh,
+          r: f.size * s * 0.016 * (onBranch ? fg.k : 1),
           colour: f.colour,
           spin: f.spin + now / 1000 * f.spinRate,
           squash: 0.55 + 0.45 * Math.abs(Math.cos(f.flutter + now / 900)),
-          alpha: at.alpha * (onBranch ? 1 - withdraw * 0.9 : 1)
+          alpha: at.alpha * (onBranch ? fg.alpha : 1)
         });
       }
       this._stamp(g, items);
@@ -2321,13 +2428,13 @@ select {
    * the way toward your pick and owns the UI outright. */
   const SKIES = [
     { id: 'hanami', label: 'Hanami',
-      skyTop: '#0a0616', skyBottom: '#231539', sky: '#150d2c',
+      skyTop: '#04101f', skyBottom: '#16344e', sky: '#0c2237',
       paper: '#ffffff',
-      moonFace: '#f6efe2', moonLimb: '#c9b9a0', moonGlow: '#ffe9c4',
-      maria: '#cbbda6', moduleInk: '#241a2e',
-      branch: '#3b2a3d',
-      leaf: ['#ff9ec2', '#ffc0d8', '#e87ba8', '#ffd6e6', '#c96690'],
-      defaultAccent: 0, stars: 1.0, halo: 0.5, vignette: 0.3 },
+      moonFace: '#edf4fb', moonLimb: '#a7bed3', moonGlow: '#b8dcff',
+      maria: '#b7c9d9', moduleInk: '#1d2436',
+      branch: '#4a3730',
+      leaf: ['#ffb3cd', '#ffd8e4', '#f18fb2', '#fff0f5', '#d97fa2'],
+      defaultAccent: 0, stars: 1.0, halo: 0.74, vignette: 0.3 },
 
     { id: 'frost', label: 'Frost',
       skyTop: '#05080f', skyBottom: '#16243a', sky: '#0d1526',

@@ -49,13 +49,17 @@ light/dark pair.
 
 ## The moon
 
-A low moon fills the frame. A cherry bough crosses it in silhouette, laden with
-blossom. The code lies latent in the moon's *maria* — the dark patches on its
-face — faint enough to miss and legible if you look for it.
+You are standing under a cherry tree, looking up at a full moon through it. A
+bare trunk runs up the near edge of the frame; boughs reach in from the trunk
+and from three sides, and blossom veils the moon on every side but the middle.
+The code lies latent in the moon's *maria* — the dark patches on its face —
+faint enough to miss and legible if you look for it.
 
-Tap it and the blossom lets go: it lifts off the bough, sweeps across the face
-on a bowed path, and settles into those patches until the code is solid. The
-emptied bough draws back off the frame as it goes, leaving the face clean.
+Tap it and the blossom lets go: it lifts off the branches, sweeps across the
+face on a bowed path, and settles into those patches until the code is solid.
+The foreground scales outward about the moon and fades as it goes, so the camera
+reads as pushing up through the blossom rather than the tree sliding aside — the
+only move that works when boughs come in from several different edges.
 
 Three moods, all of them night:
 
@@ -94,18 +98,24 @@ smoothing off.
 
 ### Blossom
 
-One blossom per dark module, plus blossom that carries no data so the bough
-looks laden rather than counted out — about 2,000 in total. Each is a five-petal
-sakura stamped from a precomputed unit polygon, so one costs ten multiply-adds.
-Broad petals with shallow notches; deep ones read as a star rather than sakura.
+One blossom per dark module, plus blossom that carries no data so the tree looks
+laden rather than counted out — about 2,000 in total. Each is a five-petal sakura
+sampled around a raised-cosine lobe, so the petals are broad and the notch
+between them narrow; alternating two radii instead gives an asterisk.
 
-Two placement rules learned the hard way, both visible immediately when broken:
+Placement rules, each learned by breaking it and looking at the result:
 
 - **Sites run the length of every limb**, not just its tip. Hanging blossom off
   the nodes alone gives a row of discrete pom-poms.
+- **Sites are few and wide, not many and tight.** Many tight ones sleeve each
+  limb in an even tube of pink, like a pipe cleaner.
 - **Spread stays small** — a fixed fraction of the viewport, not of the branch
   length. Scaled to length, a depth-0 node threw blossom across a quarter of the
   screen and the canopy detached from the bough entirely.
+- **Density falls off toward the middle of the disc.** Blossom veils the moon,
+  but the centre is where the code has to read, so a blossom landing there is
+  kept with a probability that drops to about one in eight at the middle. A hard
+  cut-off instead leaves a hole that looks stamped out.
 
 Finder patterns settle first. They are what a scanner hunts for, and watching
 the three corners arrive ahead of everything else reads as intent.
@@ -210,14 +220,19 @@ knobs worth knowing, all in `src/js/moon.js`:
   leave the disc and the quiet zone is gone.
 - **Landing order** — each blossom's `priority` in `_buildBlossoms`. Finder
   patterns are hard-coded to go first.
-- **Blossom volume** — the `2000` in `_buildBlossoms`, tuned so any URL lands
-  near the same total. The biggest lever on how laden the bough looks, and on
-  frame cost.
+- **Blossom volume** — the target total in `_buildBlossoms`, tuned so any URL
+  lands near the same number. The biggest lever on how laden the tree looks, and
+  on frame cost.
+- **The tree** — `_buildBranch`. The trunk is a bow angle shared across its
+  segments rather than a per-step turn; as a per-step constant it accumulated
+  and swung the whole trunk off frame. `arms` is where each bough enters and how
+  far it reaches — long reaches lattice the moon's face into panes.
+- **The keep-clear zone** — `clearCentre` in `_buildBlossoms`.
 - **Blossom placement** — `sites` samples along the length of every limb, and
   `spread` is a fixed fraction of the viewport rather than of branch length.
   Both matter; see the note above on what breaking either looks like.
-- **Bough shape** — seeded from the QR's version and mask, so a given URL always
-  grows the same branch. `entry` sets where it comes in from.
+- **Tree shape** is seeded from the QR's version and mask, so a given URL always
+  grows the same tree.
 - **How plainly the code shows before the reveal** — the `maria` tone per mood,
   and the `1 - inkT * 0.15` blend in `draw()`.
 
@@ -238,9 +253,9 @@ fading blossom costs a handful of fills. Each leaf is a four-point pointed oval
 — the same vertex count as the rectangle it replaced, but it reads as blossom
 instead of confetti and fills fewer pixels.
 
-Measured worst frame with the bough at full blossom — 2,000 sakura, the star
-field and the halo — is **5.4 ms**, best-of-three after a long warm-up, with
-progress pinned each frame.
+Measured worst frame with the tree at full blossom — about 2,000 sakura, 570
+limb segments at five bark passes each, the star field and the halo — is
+**2.6 ms**, best-of-three after a long warm-up, with progress pinned each frame.
 
 Two traps, both of which cost me real time:
 
