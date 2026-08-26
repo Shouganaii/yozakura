@@ -228,6 +228,13 @@ knobs worth knowing, all in `src/js/moon.js`:
   and swung the whole trunk off frame. `arms` is where each bough enters and how
   far it reaches — long reaches lattice the moon's face into panes.
 - **The keep-clear zone** — `clearCentre` in `_buildBlossoms`.
+- **Wind** — `_swayAt`. Amplitude grows with limb depth, the motion is mostly
+  vertical, and `phase` runs out along each limb so the lift travels rather than
+  the whole tree pulsing in time. Raising the frequencies past about `1.0` stops
+  reading as wind and starts reading as a wobble.
+- **Bark** — `bark()` seeds the lenticels per limb; `_barkMarks` draws them.
+  Limbs at least 9px across get a gradient across their width, thinner ones get
+  three flat tones.
 - **Blossom placement** — `sites` samples along the length of every limb, and
   `spread` is a fixed fraction of the viewport rather than of branch length.
   Both matter; see the note above on what breaking either looks like.
@@ -241,6 +248,17 @@ knobs worth knowing, all in `src/js/moon.js`:
 Everything is one 2D canvas, drawn in screen space. There is no camera and no
 projection — see *No projection* above.
 
+**Nothing on the tree animates on its own.** Every blossom still attached and
+every limb it hangs from samples one shared sway field, so a cluster and its
+branch move as a single object. Giving each petal its own phase — which is what
+this did at first — reads as shimmer rather than wind: from any distance,
+independent jitter averages out to no motion at all, just noise. Only what has
+let go tumbles.
+
+Wide limbs are filled with a gradient across their width and thin ones with
+three flat tones. Stacking discrete width passes, which is how the thick limbs
+were drawn first, banded the trunk into vertical stripes and read as bamboo.
+
 The one non-obvious performance rule, carried over from the scene this replaced:
 **canvas rasterises a path in time that grows faster than the number of subpaths
 in it.** Batching a whole 53×53 grid into a single path measured *12× slower*
@@ -253,9 +271,10 @@ fading blossom costs a handful of fills. Each leaf is a four-point pointed oval
 — the same vertex count as the rectangle it replaced, but it reads as blossom
 instead of confetti and fills fewer pixels.
 
-Measured worst frame with the tree at full blossom — about 2,000 sakura, 570
-limb segments at five bark passes each, the star field and the halo — is
-**2.6 ms**, best-of-three after a long warm-up, with progress pinned each frame.
+Measured worst frame with the tree at full blossom — about 2,000 sakura, 520
+limb segments of which 106 take a gradient apiece, the lenticels, the star field
+and the halo — is **2.7 ms**, best-of-three after a long warm-up, with progress
+pinned each frame.
 
 Two traps, both of which cost me real time:
 
