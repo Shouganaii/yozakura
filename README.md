@@ -103,6 +103,21 @@ laden rather than counted out — about 2,000 in total. Each is a five-petal sak
 sampled around a raised-cosine lobe, so the petals are broad and the notch
 between them narrow; alternating two radii instead gives an asterisk.
 
+What makes a stamped shape read as a flower rather than a sticker, in rough
+order of how much each one buys:
+
+- **A centre.** Five petals around an empty middle read as a paper cut-out; the
+  eye is looking for the small warm boss where the stamens sit. Kept close to
+  the petal's own colour family — pushed dark it turns the canopy into polka
+  dots. Only drawn on flowers over about 4px on screen.
+- **Buds.** About a fifth of the loose blossom is an unopened ball rather than
+  an open flower. Mixing the two is most of what separates a tree in bloom from
+  a scatter of identical stamps.
+- **Some flowers edge-on.** A wide squash range turns a third of them into
+  profiles, the way a real spray shows some faces and some sides.
+- **Moonlight.** Blossom in front of the disc is drawn from a paler palette than
+  blossom against the sky.
+
 Placement rules, each learned by breaking it and looking at the result:
 
 - **Sites run the length of every limb**, not just its tip. Hanging blossom off
@@ -235,6 +250,11 @@ knobs worth knowing, all in `src/js/moon.js`:
 - **Bark** — `bark()` seeds the lenticels per limb; `_barkMarks` draws them.
   Limbs at least 9px across get a gradient across their width, thinner ones get
   three flat tones.
+- **Flower centres** — `_corePal` in `_recolour`, and the radius and size cutoff
+  in `_stamp`. The mix ratio is the sensitive one.
+- **Bud share** — the `0.22` in `_buildBlossoms`.
+- **Maria** — the `MARIA` table, in units of the moon's radius. They fade out as
+  the face goes to paper, so they never cost the scanner any contrast.
 - **Blossom placement** — `sites` samples along the length of every limb, and
   `spread` is a fixed fraction of the viewport rather than of branch length.
   Both matter; see the note above on what breaking either looks like.
@@ -272,9 +292,10 @@ fading blossom costs a handful of fills. Each leaf is a four-point pointed oval
 instead of confetti and fills fewer pixels.
 
 Measured worst frame with the tree at full blossom — about 2,000 sakura, 520
-limb segments of which 106 take a gradient apiece, the lenticels, the star field
-and the halo — is **2.7 ms**, best-of-three after a long warm-up, with progress
-pinned each frame.
+limb segments of which 106 take a gradient apiece, the lenticels, the flower
+centres, the star field and the halo — is **4.5 ms** at 330x600 and **4.3 ms**
+at 1003x902, best-of-three after a long warm-up, with progress pinned each
+frame. The centres cost most of the rise from 2.7 ms and are worth it.
 
 Two traps, both of which cost me real time:
 

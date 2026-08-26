@@ -1384,6 +1384,18 @@ select {
     return pts;
   })();
 
+  /* Dark patches on the face, in units of the moon's radius. Every reference
+   * reads as the moon because of these; the latent code on its own is far too
+   * faint to do that job. */
+  const MARIA = [
+    { x: -0.30, y: -0.26, r: 0.40, a: 1.00 },
+    { x:  0.16, y: -0.40, r: 0.27, a: 0.75 },
+    { x:  0.34, y:  0.05, r: 0.34, a: 0.85 },
+    { x: -0.10, y:  0.30, r: 0.30, a: 0.60 },
+    { x: -0.46, y:  0.24, r: 0.22, a: 0.55 },
+    { x:  0.06, y: -0.06, r: 0.18, a: 0.50 }
+  ];
+
   /* Phase boundaries as fractions of the reveal, so overlaps are easy to see. */
   const T = {
     revealDuration: 2000,
@@ -1720,6 +1732,7 @@ select {
           dx: Math.cos(away) * (0.4 + rand() * 0.8),
           dy: Math.sin(away) * (0.3 + rand() * 0.7) + 0.35,
           delay: rand() * 0.5,
+          bud: rand() < 0.22,
           size: 0.85 + rand() * 0.55,
           spin: rand() * TAU, spinRate: (rand() - 0.5) * 8,
           flutter: rand() * TAU,
@@ -1760,6 +1773,15 @@ select {
       if (!this.theme) return;
       const pal = this.theme.leaf;
       this._fadeCache.clear();
+      /* Blossom in front of the moon picks up its light — every reference shows
+       * the flowers crossing the disc reading paler than the ones against sky. */
+      this._litPal = pal.map(c => mixHex(c, '#ffffff', 0.24));
+      /* Cherry centres are a small warm boss where the stamens sit. Tied to the
+       * bark colour so it stays right across all three moods. */
+      this._corePal = [
+        mixHex(pal[4], shade(this.theme.branch, 0.18), 0.38),
+        mixHex(pal[2], shade(this.theme.branch, 0.40), 0.30)
+      ];
       const paint = (list) => {
         for (const b of list) {
           b.colourIdx = Math.floor(b.tone * pal.length) % pal.length;
@@ -2051,6 +2073,22 @@ select {
       g.clip();
       g.imageSmoothingEnabled = false;
       g.drawImage(this._tex, m.x0, m.y0, this.n * m.module, this.n * m.module);
+      /* Maria over the face, inside the same clip. Drawn after the code rather
+       * than under it — the code bitmap is opaque across the whole inscribed
+       * square, so underneath they would only ever show in the corners. They
+       * fade out as the face goes to paper, so they never cost the scanner. */
+      if (inkT < 0.98) {
+        for (const s of MARIA) {
+          const bx = m.cx + s.x * m.r, by = m.cy + s.y * m.r, br = s.r * m.r;
+          const gr = g.createRadialGradient(bx, by, 0, bx, by, br);
+          const tone = mixHex(th.maria, th.moonLimb, 0.5);
+          gr.addColorStop(0, rgba(tone, 0.55 * (1 - inkT) * s.a));
+          gr.addColorStop(0.62, rgba(tone, 0.27 * (1 - inkT) * s.a));
+          gr.addColorStop(1, rgba(tone, 0));
+          g.fillStyle = gr;
+          g.fillRect(bx - br, by - br, br * 2, br * 2);
+        }
+      }
       g.restore();
 
       /* ---- the branch, drawing back off frame as it empties ---- */
@@ -2158,13 +2196,18 @@ select {
           continue;
         }
         const onBranch = at.t <= 0;
+        const bx = at.x * this.vw, by = at.y * this.vh;
+        const onMoon = onBranch &&
+          (bx - m.cx) * (bx - m.cx) + (by - m.cy) * (by - m.cy) < m.r * m.r;
         items.push({
-          x: at.x * this.vw,
-          y: at.y * this.vh,
+          x: bx, y: by,
           r: b.size * s * 0.017 * (onBranch ? fg.k : 1),
-          colour: this._blossomColour(b, at.t),
+          colour: onMoon ? this._litPal[b.colourIdx] : this._blossomColour(b, at.t),
+          core: this._corePal[b.tone < 0.5 ? 0 : 1],
           spin: onBranch ? b.spin : b.spin + now / 1000 * b.spinRate,
-          squash: onBranch ? 0.80 + 0.20 * Math.abs(Math.cos(b.flutter))
+          /* A wide squash range is what gives a few flowers edge-on, the way a
+           * real spray shows some faces and some profiles. */
+          squash: onBranch ? 0.44 + 0.56 * Math.abs(Math.cos(b.flutter))
                            : 0.55 + 0.45 * Math.abs(Math.cos(b.flutter + now / 900)),
           alpha: onBranch ? fg.alpha : 1
         });
@@ -2173,13 +2216,17 @@ select {
         const at = this._fillerAt(f, p);
         if (at.alpha <= 0.02) continue;
         const onBranch = at.alpha >= 1;
+        const fx = at.x * this.vw, fy = at.y * this.vh;
+        const onMoon = onBranch &&
+          (fx - m.cx) * (fx - m.cx) + (fy - m.cy) * (fy - m.cy) < m.r * m.r;
         items.push({
-          x: at.x * this.vw,
-          y: at.y * this.vh,
+          x: fx, y: fy,
           r: f.size * s * 0.016 * (onBranch ? fg.k : 1),
-          colour: f.colour,
+          colour: onMoon ? this._litPal[f.colourIdx] : f.colour,
+          core: this._corePal[f.tone < 0.5 ? 0 : 1],
+          bud: f.bud,
           spin: onBranch ? f.spin : f.spin + now / 1000 * f.spinRate,
-          squash: onBranch ? 0.80 + 0.20 * Math.abs(Math.cos(f.flutter))
+          squash: onBranch ? 0.44 + 0.56 * Math.abs(Math.cos(f.flutter))
                            : 0.55 + 0.45 * Math.abs(Math.cos(f.flutter + now / 900)),
           alpha: at.alpha * (onBranch ? fg.alpha : 1)
         });
@@ -2302,6 +2349,20 @@ select {
             const it = arr[k];
             const r = Math.max(0.7, it.r);
             const cs = Math.cos(it.spin), sn = Math.sin(it.spin);
+            if (it.bud) {
+              /* An unopened bud is a tight ball. Mixing them through the open
+               * flowers is most of what separates a cherry in bloom from a
+               * scatter of identical stamps. */
+              const br = r * 0.5;
+              for (let q = 0; q < 8; q++) {
+                const a = (q / 8) * TAU;
+                const bx = Math.cos(a) * br, by = Math.sin(a) * br * 0.84;
+                const x = it.x + bx * cs - by * sn, y = it.y + bx * sn + by * cs;
+                if (q === 0) g.moveTo(x, y); else g.lineTo(x, y);
+              }
+              g.closePath();
+              continue;
+            }
             for (let q = 0; q < BLOSSOM.length; q++) {
               const bx = BLOSSOM[q][0] * r, by = BLOSSOM[q][1] * r * it.squash;
               const px = it.x + bx * cs - by * sn;
@@ -2311,6 +2372,42 @@ select {
             g.closePath();
           }
           g.fill();
+        }
+      }
+
+      /* Centres last, over the petals. Five petals around an empty middle read
+       * as a paper cut-out; the eye is looking for the little dark boss. Only
+       * on flowers big enough on screen to show one. */
+      if (this._corePal) {
+        const cores = new Map();
+        for (const it of items) {
+          if (it.bud || !it.core || it.r < 4.4) continue;
+          const step = it.alpha >= 1 ? STEPS : Math.max(1, Math.round(it.alpha * STEPS));
+          const key = it.core + '|' + step;
+          let arr = cores.get(key);
+          if (!arr) { arr = []; cores.set(key, arr); }
+          arr.push(it);
+        }
+        for (const [key, arr] of cores) {
+          const cut = key.lastIndexOf('|');
+          g.fillStyle = key.slice(0, cut);
+          g.globalAlpha = (+key.slice(cut + 1)) / STEPS;
+          for (let i = 0; i < arr.length; i += CHUNK) {
+            const end = Math.min(i + CHUNK, arr.length);
+            g.beginPath();
+            for (let k = i; k < end; k++) {
+              const it = arr[k];
+              const cr = it.r * (0.13 + (it.squash % 0.09));
+              for (let q = 0; q < 6; q++) {
+                const a = (q / 6) * TAU + it.spin;
+                const x = it.x + Math.cos(a) * cr;
+                const y = it.y + Math.sin(a) * cr * it.squash;
+                if (q === 0) g.moveTo(x, y); else g.lineTo(x, y);
+              }
+              g.closePath();
+            }
+            g.fill();
+          }
         }
       }
       g.globalAlpha = 1;
