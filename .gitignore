@@ -7,3 +7,6 @@ __pycache__/
 
 # Staging directory built by deploy.sh
 .deploy/
+
+# Wrangler build cache — carries the Cloudflare account id and account name
+.wrangler/
